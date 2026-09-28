@@ -1,4 +1,4 @@
-; Keeps the genoffice command line (resources\cli, holding genoffice.cmd and the
+﻿; Keeps the genoffice command line (resources\cli, holding genoffice.cmd and the
 ; extension-less genoffice for Git Bash) on the installing user's PATH for the
 ; lifetime of the install. The value is read and written unexpanded
 ; (REG_EXPAND_SZ) so entries such as %USERPROFILE%\bin survive, and Explorer
