@@ -25,6 +25,9 @@ export interface LibraryEntry {
   libPath: string
   importedAt: number
   lastOpenedAt: number
+  /** original file's mtime as of the last import/re-open; a different value
+      now means the original changed on disk since the copy was last seen */
+  lastOriginalMtimeMs?: number
 }
 
 interface LibraryFile {
@@ -76,6 +79,15 @@ function uniqueLibPath(libraryDir: string, originalPath: string): string {
   }
 }
 
+/** record the original file's mtime on an entry (best effort) */
+function stampOriginalMtime(entry: LibraryEntry, originalPath: string): void {
+  try {
+    entry.lastOriginalMtimeMs = statSync(originalPath).mtimeMs
+  } catch {
+    // original vanished mid-open: leave the previous stamp untouched
+  }
+}
+
 export type LibraryImportStatus = 'imported' | 'reused' | 'restored' | 'in-library' | 'passthrough'
 
 export interface LibraryImportResult {
@@ -111,10 +123,12 @@ export function resolveLibraryPath(
         copyFileSync(originalPath, existing.libPath)
         existing.importedAt = now
         existing.lastOpenedAt = now
+        stampOriginalMtime(existing, originalPath)
         writeEntries(indexPath, entries)
         return { status: 'restored', path: existing.libPath, entry: existing }
       }
       existing.lastOpenedAt = now
+      stampOriginalMtime(existing, originalPath)
       writeEntries(indexPath, entries)
       return { status: 'reused', path: existing.libPath, entry: existing }
     }
@@ -127,6 +141,7 @@ export function resolveLibraryPath(
       importedAt: now,
       lastOpenedAt: now,
     }
+    stampOriginalMtime(entry, originalPath)
     entries.unshift(entry)
     writeEntries(indexPath, entries)
     return { status: 'imported', path: libPath, entry }
@@ -175,6 +190,7 @@ export function reimportLibraryEntry(
     copyFileSync(entry.originalPath, entry.libPath)
     entry.importedAt = now
     entry.lastOpenedAt = now
+    stampOriginalMtime(entry, entry.originalPath)
     writeEntries(indexPath, entries)
     return entry
   } catch (err) {

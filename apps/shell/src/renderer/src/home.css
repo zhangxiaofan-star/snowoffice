@@ -2183,3 +2183,16 @@ body.vib .home {
   text-align: right;
   padding-top: 2px;
 }
+
+/* document-library row: badge for originals that changed on disk since import */
+.lib-changed-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: 1px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}

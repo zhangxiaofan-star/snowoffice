@@ -4015,12 +4015,24 @@ function registerHomeIpc(): void {
 
   ipcMain.handle(HOME_CHANNELS.libraryList, (): LibraryEntryInfo[] =>
     readLibraryEntries(LIBRARY_INDEX_PATH())
-      .map((entry) => ({
-        ...entry,
-        name: basename(entry.libPath),
-        ext: extname(entry.libPath).slice(1).toLowerCase(),
-        ...statLibraryEntry(entry),
-      }))
+      .map((entry) => {
+        // flag originals that changed on disk since the copy was last seen
+        let originalChanged = false
+        if (typeof entry.lastOriginalMtimeMs === 'number' && existsSync(entry.originalPath)) {
+          try {
+            originalChanged = statSync(entry.originalPath).mtimeMs !== entry.lastOriginalMtimeMs
+          } catch {
+            originalChanged = false
+          }
+        }
+        return {
+          ...entry,
+          name: basename(entry.libPath),
+          ext: extname(entry.libPath).slice(1).toLowerCase(),
+          originalChanged,
+          ...statLibraryEntry(entry),
+        }
+      })
       .sort((a, b) => b.lastOpenedAt - a.lastOpenedAt),
   )
 

@@ -112,6 +112,9 @@ export interface LibraryEntryInfo {
   sizeBytes: number
   /** the copy failed to stat (deleted by hand, drive gone) */
   missing?: boolean
+
+  /** the original file changed on disk since the copy was last opened */
+  originalChanged?: boolean
 }
 
 /** local file search over names, folders and extracted text */

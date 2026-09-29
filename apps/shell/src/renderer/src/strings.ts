@@ -7,6 +7,7 @@ export const strings = {
       '用 GenOffice 打开的文件会自动复制一份存进文档库；之后打开、编辑、保存的都是这份副本，原文件不会被改动。',
     libraryEmpty: '还没有文档。用 GenOffice 打开的文件会自动收进这里。',
     libraryOriginalCol: '原文件位置',
+    libraryOriginalChanged: '原件已更新',
     libraryImportedCol: '收入时间',
     libraryRevealOriginal: '显示原文件',
     libraryReimport: '从原文件重新导入',
@@ -408,6 +409,7 @@ export const strings = {
     libraryEmpty:
       'No documents yet. Files you open with GenOffice are collected here automatically.',
     libraryOriginalCol: 'Original location',
+    libraryOriginalChanged: 'Original updated',
     libraryImportedCol: 'Imported',
     libraryRevealOriginal: 'Reveal original',
     libraryReimport: 'Re-import from original',
@@ -817,6 +819,7 @@ export const strings = {
       'Các tệp bạn mở bằng GenOffice sẽ tự động được sao chép vào thư viện. Mở, chỉnh sửa và lưu đều thực hiện trên bản sao đó — tệp gốc không bao giờ bị thay đổi.',
     libraryEmpty: 'Chưa có tài liệu nào. Các tệp bạn mở bằng GenOffice sẽ tự động được thu vào đây.',
     libraryOriginalCol: 'Vị trí tệp gốc',
+    libraryOriginalChanged: 'Bản gốc đã cập nhật',
     libraryImportedCol: 'Thời gian nhập',
     libraryRevealOriginal: 'Hiện tệp gốc',
     libraryReimport: 'Nhập lại từ tệp gốc',
@@ -1230,6 +1233,7 @@ export const strings = {
     libraryEmpty:
       'ドキュメントはまだありません。GenOffice で開いたファイルはここに自動的に集まります。',
     libraryOriginalCol: '元の場所',
+    libraryOriginalChanged: '元ファイル更新あり',
     libraryImportedCol: '追加日時',
     libraryRevealOriginal: '元のファイルを表示',
     libraryReimport: '元のファイルから再取り込み',
@@ -1654,6 +1658,7 @@ export const strings = {
       'GenOffice에서 연 파일은 라이브러리에 자동으로 복사됩니다. 열기·편집·저장은 모두 이 사본을 대상으로 하며 원본 파일은 변경되지 않습니다.',
     libraryEmpty: '아직 문서가 없습니다. GenOffice에서 연 파일이 여기에 자동으로 모입니다.',
     libraryOriginalCol: '원본 위치',
+    libraryOriginalChanged: '원본 업데이트됨',
     libraryImportedCol: '가져온 날짜',
     libraryRevealOriginal: '원본 파일 표시',
     libraryReimport: '원본에서 다시 가져오기',
@@ -2069,6 +2074,7 @@ export const strings = {
     libraryEmpty:
       'Aucun document pour l’instant. Les fichiers ouverts avec GenOffice arrivent ici automatiquement.',
     libraryOriginalCol: 'Emplacement d’origine',
+    libraryOriginalChanged: 'Original mis à jour',
     libraryImportedCol: 'Importé le',
     libraryRevealOriginal: 'Afficher l’original',
     libraryReimport: 'Réimporter depuis l’original',
@@ -2500,6 +2506,7 @@ export const strings = {
     libraryEmpty:
       'Noch keine Dokumente. Mit GenOffice geöffnete Dateien werden automatisch hier gesammelt.',
     libraryOriginalCol: 'Originalspeicherort',
+    libraryOriginalChanged: 'Original aktualisiert',
     libraryImportedCol: 'Importiert am',
     libraryRevealOriginal: 'Original anzeigen',
     libraryReimport: 'Aus Original neu importieren',
@@ -2933,6 +2940,7 @@ export const strings = {
     libraryEmpty:
       'Aún no hay documentos. Los archivos que abras con GenOffice se recopilan aquí automáticamente.',
     libraryOriginalCol: 'Ubicación original',
+    libraryOriginalChanged: 'Original actualizado',
     libraryImportedCol: 'Importado',
     libraryRevealOriginal: 'Mostrar original',
     libraryReimport: 'Reimportar desde el original',
@@ -3361,6 +3369,7 @@ export const strings = {
       'ไฟล์ที่เปิดด้วย GenOffice จะถูกคัดลอกเข้าคลังเอกสารโดยอัตโนมัติ การเปิด แก้ไข และบันทึกจะกระทำกับสำเนานี้ โดยไฟล์ต้นฉบับจะไม่ถูกแก้ไข',
     libraryEmpty: 'ยังไม่มีเอกสาร ไฟล์ที่เปิดด้วย GenOffice จะถูกรวมไว้ที่นี่โดยอัตโนมัติ',
     libraryOriginalCol: 'ตำแหน่งต้นฉบับ',
+    libraryOriginalChanged: 'ต้นฉบับถูกอัปเดต',
     libraryImportedCol: 'วันที่นำเข้า',
     libraryRevealOriginal: 'แสดงไฟล์ต้นฉบับ',
     libraryReimport: 'นำเข้าใหม่จากต้นฉบับ',
@@ -3773,6 +3782,7 @@ export const strings = {
     libraryEmpty:
       'Belum ada dokumen. File yang dibuka dengan GenOffice dikumpulkan di sini secara otomatis.',
     libraryOriginalCol: 'Lokasi asli',
+    libraryOriginalChanged: 'Asli diperbarui',
     libraryImportedCol: 'Diimpor',
     libraryRevealOriginal: 'Tampilkan asli',
     libraryReimport: 'Impor ulang dari asli',
@@ -4196,6 +4206,7 @@ export const strings = {
     libraryEmpty:
       'Документов пока нет. Файлы, открытые в GenOffice, собираются здесь автоматически.',
     libraryOriginalCol: 'Исходное расположение',
+    libraryOriginalChanged: 'Оригинал обновлён',
     libraryImportedCol: 'Добавлен',
     libraryRevealOriginal: 'Показать оригинал',
     libraryReimport: 'Импортировать заново из оригинала',
@@ -4616,6 +4627,7 @@ export const strings = {
       'يتم نسخ الملفات التي تفتحها بـ GenOffice إلى المكتبة تلقائيًا. الفتح والتحرير والحفظ يعمل على هذه النسخة، ولا يتم تعديل الملف الأصلي أبدًا.',
     libraryEmpty: 'لا توجد مستندات بعد. تُجمع الملفات التي تفتحها بـ GenOffice هنا تلقائيًا.',
     libraryOriginalCol: 'الموقع الأصلي',
+    libraryOriginalChanged: 'تم تحديث الأصل',
     libraryImportedCol: 'تاريخ الاستيراد',
     libraryRevealOriginal: 'إظهار الأصل',
     libraryReimport: 'إعادة الاستيراد من الأصل',
@@ -5029,6 +5041,7 @@ export const strings = {
     libraryEmpty:
       'Nenhum documento ainda. Os arquivos abertos com o GenOffice são reunidos aqui automaticamente.',
     libraryOriginalCol: 'Local original',
+    libraryOriginalChanged: 'Original atualizado',
     libraryImportedCol: 'Importado em',
     libraryRevealOriginal: 'Mostrar original',
     libraryReimport: 'Reimportar do original',
@@ -5447,6 +5460,7 @@ export const strings = {
     libraryEmpty:
       'Nessun documento. I file aperti con GenOffice vengono raccolti qui automaticamente.',
     libraryOriginalCol: 'Percorso originale',
+    libraryOriginalChanged: 'Originale aggiornato',
     libraryImportedCol: 'Importato il',
     libraryRevealOriginal: 'Mostra originale',
     libraryReimport: 'Reimporta dall’originale',
@@ -5863,6 +5877,7 @@ export const strings = {
       'Pliki otwarte w GenOffice są automatycznie kopiowane do biblioteki. Otwieranie, edytowanie i zapisywanie dotyczy tej kopii — oryginalny plik pozostaje bez zmian.',
     libraryEmpty: 'Brak dokumentów. Pliki otwarte w GenOffice trafiają tutaj automatycznie.',
     libraryOriginalCol: 'Lokalizacja oryginału',
+    libraryOriginalChanged: 'Oryginał zaktualizowany',
     libraryImportedCol: 'Dodano',
     libraryRevealOriginal: 'Pokaż oryginał',
     libraryReimport: 'Zaimportuj ponownie z oryginału',
@@ -6275,6 +6290,7 @@ export const strings = {
     libraryEmpty:
       'Zatím žádné dokumenty. Soubory otevřené v GenOffice se zde shromažďují automaticky.',
     libraryOriginalCol: 'Původní umístění',
+    libraryOriginalChanged: 'Originál aktualizován',
     libraryImportedCol: 'Importováno',
     libraryRevealOriginal: 'Zobrazit originál',
     libraryReimport: 'Znovu importovat z originálu',
@@ -6687,6 +6703,7 @@ export const strings = {
     libraryEmpty:
       'Nog geen documenten. Bestanden die je met GenOffice opent worden hier automatisch verzameld.',
     libraryOriginalCol: 'Oorspronkelijke locatie',
+    libraryOriginalChanged: 'Origineel bijgewerkt',
     libraryImportedCol: 'Geïmporteerd op',
     libraryRevealOriginal: 'Toon origineel',
     libraryReimport: 'Opnieuw importeren vanuit origineel',
@@ -7102,6 +7119,7 @@ export const strings = {
     libraryEmpty:
       'Belum ada dokumen. Fail yang dibuka dengan GenOffice dikumpulkan di sini secara automatik.',
     libraryOriginalCol: 'Lokasi asal',
+    libraryOriginalChanged: 'Asal dikemas kini',
     libraryImportedCol: 'Diimport',
     libraryRevealOriginal: 'Tunjukkan asal',
     libraryReimport: 'Import semula dari asal',
@@ -7519,6 +7537,7 @@ export const strings = {
       'קבצים שנפתחים ב־GenOffice מועתקים אוטומטית לספרייה. פתיחה, עריכה ושמירה מתבצעים על העותק — הקובץ המקורי אינו משתנה.',
     libraryEmpty: 'אין עדיין מסמכים. קבצים שנפתחים ב־GenOffice נאספים כאן באופן אוטומטי.',
     libraryOriginalCol: 'מיקום מקורי',
+    libraryOriginalChanged: 'המקור עודכן',
     libraryImportedCol: 'נוסף',
     libraryRevealOriginal: 'הצג מקור',
     libraryReimport: 'ייבוא מחדש מהמקור',
@@ -7918,6 +7937,7 @@ export const strings = {
       'GenOffice से खोली गई फ़ाइलें अपने आप लाइब्रेरी में कॉपी हो जाती हैं। खोलना, संपादित करना और सहेजना इसी कॉपी पर होता है — मूल फ़ाइल अपरिवर्तित रहती है।',
     libraryEmpty: 'अभी कोई दस्तावेज़ नहीं। GenOffice से खोली गई फ़ाइलें यहाँ अपने आप जमा होती हैं।',
     libraryOriginalCol: 'मूल स्थान',
+    libraryOriginalChanged: 'मूल अपडेट किया गया',
     libraryImportedCol: 'आयातित',
     libraryRevealOriginal: 'मूल दिखाएँ',
     libraryReimport: 'मूल से फिर आयात करें',
@@ -8329,6 +8349,7 @@ export const strings = {
       '用 GenOffice 開啟的檔案會自動複製一份存入文件庫；之後開啟、編輯、儲存的都是這份副本，原始檔案不會被更動。',
     libraryEmpty: '還沒有文件。用 GenOffice 開啟的檔案會自動收進這裡。',
     libraryOriginalCol: '原始檔案位置',
+    libraryOriginalChanged: '原始檔案已更新',
     libraryImportedCol: '收入時間',
     libraryRevealOriginal: '顯示原始檔案',
     libraryReimport: '從原始檔案重新匯入',

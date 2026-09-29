@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -164,6 +164,34 @@ describe('isLibraryPath', () => {
   it('does not treat a sibling directory with a shared prefix as inside', () => {
     // "library-2" starts with "library" but is not the library itself
     expect(isLibraryPath(join(root, 'library-2', 'a.docx'), libraryDir)).toBe(false)
+  })
+})
+
+describe('original mtime stamping', () => {
+  it('stamps the original mtime on import and refreshes it on re-open after external change', () => {
+    const original = makeOriginal('watched.docx', 'v1')
+    const first = resolveLibraryPath(original, libraryDir, indexPath)
+    expect(first.entry?.lastOriginalMtimeMs).toBeTypeOf('number')
+
+    // the original changes on disk while the copy is untouched
+    const before = first.entry?.lastOriginalMtimeMs
+    writeFileSync(original, 'v2 with more content')
+    if (statSync(original).mtimeMs === before) {
+      // same-ms filesystems: force a distinguishable mtime
+      const future = new Date(Date.now() + 5000)
+      utimesSync(original, future, future)
+    }
+
+    // detection = current mtime differs from the stored stamp
+    const entries = readLibraryEntries(indexPath)
+    const entry = entries[0]
+    const changed = statSync(entry.originalPath).mtimeMs !== entry.lastOriginalMtimeMs
+    expect(changed).toBe(true)
+
+    // re-opening refreshes the stamp, so it is no longer flagged
+    resolveLibraryPath(original, libraryDir, indexPath)
+    const after = readLibraryEntries(indexPath)[0]
+    expect(statSync(entry.originalPath).mtimeMs).toBe(after.lastOriginalMtimeMs)
   })
 })
 

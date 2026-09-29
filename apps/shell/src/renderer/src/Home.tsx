@@ -1088,7 +1088,14 @@ function LibraryView() {
                     <span className="recent-icon">
                       <FileBadge ext={entry.ext} size={24} />
                     </span>
-                    <span className="recent-name">{entry.name}</span>
+                    <span className="recent-name">
+                      {entry.name}
+                      {entry.originalChanged && (
+                        <span className="lib-changed-badge" title={t('libraryOriginalChanged')}>
+                          {t('libraryOriginalChanged')}
+                        </span>
+                      )}
+                    </span>
                     <span className="recent-path" title={entry.originalPath}>
                       {entry.originalPath}
                     </span>
