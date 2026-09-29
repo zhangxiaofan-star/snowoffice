@@ -140,7 +140,9 @@ describe('EditorContextMenu', () => {
     editor.destroy()
   })
 
-  it('sends the selected text to the AI panel for Synonyms', () => {
+  // Skipped while AI_ENABLED is false: the AI context-menu entries (Synonyms /
+  // Translate) are hidden, so the menu under test renders neither of them.
+  it.skip('sends the selected text to the AI panel for Synonyms', () => {
     const editor = createEditor()
     select(editor, 1, 4)
     const onAiPreset = vi.fn()
@@ -158,7 +160,7 @@ describe('EditorContextMenu', () => {
     editor.destroy()
   })
 
-  it('marks AI-backed items (Synonyms/Translate) with the copilot badge', () => {
+  it.skip('marks AI-backed items (Synonyms/Translate) with the copilot badge', () => {
     const editor = createEditor()
     select(editor, 1, 4)
     const { container, unmount } = render(createElement(EditorContextMenu, menuProps(editor)))

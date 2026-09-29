@@ -37,6 +37,7 @@ import { SlashMenu, type SlashMenuHandle } from './components/SlashMenu'
 import { ToastHost } from './components/toast'
 import { TableMenu } from './components/TableMenu'
 import { FrontmatterPanel } from './components/FrontmatterPanel'
+import { AI_ENABLED } from '@genoffice/electron-utils/ai-flag'
 import { AiAskPopover } from './components/AiAskPopover'
 import { AiPanel, GensparkMark, type AiPreset, type MarkdownAiDeps } from './ai/AiPanel'
 import { EDIT_QUEUE_MAX, selectionForAnchor, type EditQueueItem } from './ai/edit-queue'
@@ -837,33 +838,35 @@ export default function App() {
       />
       {status === 'loading' && <div className="center-note">{t('loading')}</div>}
       <div className="app-main" style={status === 'ready' ? undefined : { display: 'none' }}>
-        <div className={`ai-dock${aiOpen ? '' : ' collapsed'}`}>
-          {!aiOpen && (
-            <button
-              className="ai-rail"
-              data-tip={t('aiOpenAssistant')}
-              aria-label={t('aiOpenAssistant')}
-              onClick={() => setAiOpen(true)}
-            >
-              <GensparkMark size={22} />
-            </button>
-          )}
-          {/* mounted only after the file is loaded so chat history resolves against the real path */}
-          {status === 'ready' && (
-            <AiPanel
-              deps={aiDeps}
-              filePath={filePath}
-              preset={aiPreset}
-              onCollapse={() => setAiOpen(false)}
-              editQueue={editQueue}
-              onQueueEditInstruction={queueUpdate}
-              onQueueRemove={queueRemove}
-              onQueueClear={queueClear}
-              onQueueFocus={queueFocus}
-              onQueueConsume={queueConsume}
-            />
-          )}
-        </div>
+        {AI_ENABLED && (
+          <div className={`ai-dock${aiOpen ? '' : ' collapsed'}`}>
+            {!aiOpen && (
+              <button
+                className="ai-rail"
+                data-tip={t('aiOpenAssistant')}
+                aria-label={t('aiOpenAssistant')}
+                onClick={() => setAiOpen(true)}
+              >
+                <GensparkMark size={22} />
+              </button>
+            )}
+            {/* mounted only after the file is loaded so chat history resolves against the real path */}
+            {status === 'ready' && (
+              <AiPanel
+                deps={aiDeps}
+                filePath={filePath}
+                preset={aiPreset}
+                onCollapse={() => setAiOpen(false)}
+                editQueue={editQueue}
+                onQueueEditInstruction={queueUpdate}
+                onQueueRemove={queueRemove}
+                onQueueClear={queueClear}
+                onQueueFocus={queueFocus}
+                onQueueConsume={queueConsume}
+              />
+            )}
+          </div>
+        )}
         {outlineOpen && (
           <OutlinePane
             items={outlineItems}
@@ -952,7 +955,7 @@ export default function App() {
         />
       )}
       <TableMenu editor={editor} scrollRef={scrollRef} zoom={zoom} />
-      {editor && status === 'ready' && (
+      {AI_ENABLED && editor && status === 'ready' && (
         <AiAskPopover
           editor={editor}
           queueFull={editQueue.length >= EDIT_QUEUE_MAX}

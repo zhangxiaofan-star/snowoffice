@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test, expect } from '@playwright/test'
 import { launchShell, closeAndSaveVideo, waitForPageWithUrl, screenshotPath } from './helpers'
+import { AI_ENABLED } from './ai-flag'
 
 test.describe('markdown editor', () => {
   test('newly opened long Markdown starts at the title', async () => {
@@ -152,6 +153,7 @@ test.describe('markdown editor', () => {
   })
 
   test('ribbon AI preset button opens the panel and sends the instruction', async () => {
+    test.skip(!AI_ENABLED, 'AI features are disabled in this build (e2e/ai-flag.ts)')
     const dir = await mkdtemp(join(tmpdir(), 'genoffice-md-'))
     const mdPath = join(dir, 'summary.md')
     await writeFile(mdPath, '# Topic\n\nSome content worth summarizing.\n')

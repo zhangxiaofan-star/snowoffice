@@ -209,7 +209,10 @@ async function pickProvider(label: string): Promise<void> {
 
 // ── 1. it never writes settings ───────────────────────────
 
-describe('the refresh touches the catalog and nothing else', () => {
+// Skipped while AI_ENABLED is false: the AI model pane is removed from the
+// settings nav, so the modal under test never renders it. The pane code and
+// these behaviors are unchanged; flip the flag back to re-enable.
+describe.skip('the refresh touches the catalog and nothing else', () => {
   it('does not revert a key typed while the probe is in flight', async () => {
     installApi(storedSettings())
     await openAiPane()
@@ -277,7 +280,7 @@ describe('the refresh touches the catalog and nothing else', () => {
 
 // ── 2. the fold itself ────────────────────────────────────
 
-describe('the fold', () => {
+describe.skip('the fold', () => {
   it('turns the model box into a picker listing what the endpoint advertises', async () => {
     installApi(storedSettings())
     await openAiPane()
@@ -326,7 +329,7 @@ describe('the fold', () => {
 
 // ── 3. when it probes at all ──────────────────────────────
 
-describe('scope', () => {
+describe.skip('scope', () => {
   it('does not probe a saved endpoint while another provider is selected', async () => {
     installApi(storedSettings({ provider: 'genspark' }))
     await openAiPane()
@@ -357,7 +360,7 @@ describe('scope', () => {
 
 // ── 4. request discipline ─────────────────────────────────
 
-describe('request discipline', () => {
+describe.skip('request discipline', () => {
   it('collapses a burst of keystrokes in the address field into one request', async () => {
     installApi(storedSettings({ baseUrl: '' }))
     await openAiPane()

@@ -67,6 +67,7 @@ import {
   readBodyCapped,
   writeJsonAtomic,
 } from '@genoffice/electron-utils'
+import { AI_ENABLED } from '@genoffice/electron-utils/ai-flag'
 import { configureMetricsCache, familyVerticalMetrics } from '@genoffice/font-metrics'
 import { createI18n, getUiLang, normalizeLang, setUiLang } from '@genoffice/i18n'
 import { ProjectStore } from '@genoffice/project-store'
@@ -3615,6 +3616,7 @@ const activeAiStreams = new Map<string, AbortController>()
  * sheets' standalone AI handlers use the same channel names.
  */
 export function registerAiIpc(): void {
+  if (!AI_ENABLED) return
   app.once('before-quit', shutdownCodexAppServers)
   ipcMain.handle('ai:get-settings', async (): Promise<AiSettings> => {
     const stored = readJson<Partial<AiSettings> & LegacyAiSettings>(SETTINGS_PATH(), {})
@@ -5318,13 +5320,17 @@ export function buildDocsMenu(): void {
           ],
         },
         { type: 'separator' },
-        {
-          id: 'docs-menu-ai-sidebar',
-          type: 'checkbox',
-          checked: activeViewMenuState().aiSidebar,
-          label: tm('menuAiSidebar'),
-          click: () => sendCommand('toggle-ai'),
-        },
+        ...(AI_ENABLED
+          ? [
+              {
+                id: 'docs-menu-ai-sidebar',
+                type: 'checkbox' as const,
+                checked: activeViewMenuState().aiSidebar,
+                label: tm('menuAiSidebar'),
+                click: () => sendCommand('toggle-ai'),
+              },
+            ]
+          : []),
         {
           id: 'docs-menu-dark-mode',
           type: 'checkbox',
@@ -5478,9 +5484,13 @@ export function buildDocsMenu(): void {
         ...(isMac
           ? []
           : [{ label: tm('menuPreferences'), click: () => sendCommand('preferences') }]),
-        { type: 'separator' },
-        // Runs the same AI proofread as Review > Editor (renderer shows the one-time ack)
-        { label: tm('menuAiProofread'), click: () => sendCommand('ai-proofread') },
+        ...(AI_ENABLED
+          ? [
+              { type: 'separator' as const },
+              // Runs the same AI proofread as Review > Editor (renderer shows the one-time ack)
+              { label: tm('menuAiProofread'), click: () => sendCommand('ai-proofread') },
+            ]
+          : []),
       ],
     },
     windowMenuTemplate(process.platform, appMenuLabels(getUiLang())),

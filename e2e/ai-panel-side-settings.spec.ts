@@ -2,6 +2,9 @@ import { test, expect } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { launchShell, closeAndSaveVideo, waitForPageWithUrl, screenshotPath } from './helpers'
+import { AI_ENABLED } from './ai-flag'
+
+test.skip(!AI_ENABLED, 'AI features are disabled in this build (e2e/ai-flag.ts)')
 
 test('AI panel side persists across restart and updates an open Docs tab without losing the draft', async () => {
   const fixture = join(__dirname, 'assets/justify-pagegap-fr.docx')

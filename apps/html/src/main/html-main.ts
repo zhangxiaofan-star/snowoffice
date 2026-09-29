@@ -40,6 +40,7 @@ import {
   MAX_REMOTE_IMAGE_BYTES,
   readBodyCapped,
 } from '@genoffice/electron-utils'
+import { AI_ENABLED } from '@genoffice/electron-utils/ai-flag'
 import { createI18n, getUiLang } from '@genoffice/i18n'
 import { generateImageTool } from '@genoffice/ai-search'
 import { parseFileToText } from '@genoffice/file-parse'
@@ -1523,14 +1524,16 @@ function registerHtmlIpc(): void {
 
   // html-owned (like docs:ai-generate-image): the shared ai:* handlers are
   // shell-registered, but image generation is gated per app
-  ipcMain.handle(
-    HTML_CHANNELS.aiGenerateImage,
-    (_e, op: { prompt?: unknown; aspectRatio?: unknown }) =>
-      generateImageTool(join(app.getPath('userData'), 'ai-settings.json'), {
-        prompt: String(op?.prompt ?? ''),
-        aspectRatio: op?.aspectRatio ? String(op.aspectRatio) : undefined,
-      }),
-  )
+  if (AI_ENABLED) {
+    ipcMain.handle(
+      HTML_CHANNELS.aiGenerateImage,
+      (_e, op: { prompt?: unknown; aspectRatio?: unknown }) =>
+        generateImageTool(join(app.getPath('userData'), 'ai-settings.json'), {
+          prompt: String(op?.prompt ?? ''),
+          aspectRatio: op?.aspectRatio ? String(op.aspectRatio) : undefined,
+        }),
+    )
+  }
 
   const MIME_BY_EXT: Record<string, ImageData['mime']> = {
     '.png': 'image/png',

@@ -10,6 +10,7 @@
     "paths": {
       "@genoffice/docx-engine": ["../../packages/docx-engine/src/index.ts"],
       "@genoffice/font-metrics": ["../../packages/font-metrics/src/index.ts"],
+      "@genoffice/electron-utils/ai-flag": ["../../packages/electron-utils/src/ai-flag.ts"],
       "@genoffice/electron-utils/headless-export": [
         "../../packages/electron-utils/src/headless-export.ts"
       ],

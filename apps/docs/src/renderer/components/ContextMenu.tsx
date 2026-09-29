@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/core'
 import type { Command } from '@tiptap/pm/state'
+import { AI_ENABLED } from '@genoffice/electron-utils/ai-flag'
 import { NodeSelection, TextSelection } from '@tiptap/pm/state'
 import {
   addColumnAfter,
@@ -682,37 +683,45 @@ export function EditorContextMenu({
           </div>
         </>
       )}
-      <div className="ctx-sep" />
-      {item(t('appSynonyms'), {
-        disabled: !synonymText,
-        ai: true,
-        onClick: run(() => onAiPreset(t('appSynonymsPrompt', { text: synonymText }))),
-      })}
-      <div className="ctx-item-wrap" onMouseLeave={() => setSubmenu(null)}>
-        {item(t('appTranslate'), { disabled: !hasSelection, submenuKey: 'translate', ai: true })}
-        {submenu === 'translate' && hasSelection && (
-          <div className="ctx-submenu">
-            {TRANSLATE_TARGETS.map((target) => (
-              <button
-                key={target.labelKey}
-                className="ctx-item"
-                onClick={run(() =>
-                  onAiPreset(
-                    t('appTranslateSelectionPrompt', {
-                      lang: t(target.labelKey),
-                      text: selectedText,
-                    }),
-                  ),
-                )}
-              >
-                <span className="ctx-label">
-                  {t('appTranslateTo', { lang: t(target.labelKey) })}
-                </span>
-              </button>
-            ))}
+      {AI_ENABLED && (
+        <>
+          <div className="ctx-sep" />
+          {item(t('appSynonyms'), {
+            disabled: !synonymText,
+            ai: true,
+            onClick: run(() => onAiPreset(t('appSynonymsPrompt', { text: synonymText }))),
+          })}
+          <div className="ctx-item-wrap" onMouseLeave={() => setSubmenu(null)}>
+            {item(t('appTranslate'), {
+              disabled: !hasSelection,
+              submenuKey: 'translate',
+              ai: true,
+            })}
+            {submenu === 'translate' && hasSelection && (
+              <div className="ctx-submenu">
+                {TRANSLATE_TARGETS.map((target) => (
+                  <button
+                    key={target.labelKey}
+                    className="ctx-item"
+                    onClick={run(() =>
+                      onAiPreset(
+                        t('appTranslateSelectionPrompt', {
+                          lang: t(target.labelKey),
+                          text: selectedText,
+                        }),
+                      ),
+                    )}
+                  >
+                    <span className="ctx-label">
+                      {t('appTranslateTo', { lang: t(target.labelKey) })}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
       {isFloating && (
         <>
           <div className="ctx-sep" />

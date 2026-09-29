@@ -7,6 +7,7 @@ import {
 } from '@genoffice/ui'
 import { useI18n } from '../i18n/locale'
 import type { StringKey } from '../i18n/locale'
+import { AI_ENABLED } from '@genoffice/electron-utils/ai-flag'
 import { GensparkMark } from '../ai/AiPanel'
 import type { InsertKind, InsertOptions } from '../document/insert-presets'
 import {
@@ -270,91 +271,93 @@ export function Ribbon(p: Props) {
       </div>
 
       <div className="ribbon-body" data-ribbon-body="">
-        <div className="ribbon-group">
-          <div className="ribbon-group-items">
-            <button
-              type="button"
-              className={`rb-big ai-entry${p.aiOpen ? ' active' : ''}`}
-              data-tip={t('aiOpenAssistant')}
-              aria-pressed={p.aiOpen}
-              disabled={off}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={p.onToggleAi}
-            >
-              <span className="rb-big-icon">
-                <GensparkMark size={26} />
-              </span>
-              <span>Genspark AI</span>
-            </button>
-            <button
-              type="button"
-              className="rb-big ai-entry"
-              data-tip={t('aiRestyleBtn')}
-              disabled={off}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => p.onAiPreset(t('aiRestylePrompt'))}
-            >
-              <span className="rb-big-icon">
-                <span className="ai-feature-icon" aria-hidden="true">
-                  <IconWand size={24} />
-                </span>
-              </span>
-              <span>{t('aiRestyleBtn')}</span>
-            </button>
-            <div className="rb-menu-wrap" ref={themeRef}>
+        {AI_ENABLED && (
+          <div className="ribbon-group">
+            <div className="ribbon-group-items">
               <button
                 type="button"
-                className={`rb-big ai-entry${themeOpen ? ' active' : ''}`}
-                data-tip={t('aiThemeBtn')}
-                aria-haspopup="menu"
-                aria-expanded={themeOpen}
+                className={`rb-big ai-entry${p.aiOpen ? ' active' : ''}`}
+                data-tip={t('aiOpenAssistant')}
+                aria-pressed={p.aiOpen}
                 disabled={off}
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => setThemeOpen((v) => !v)}
+                onClick={p.onToggleAi}
+              >
+                <span className="rb-big-icon">
+                  <GensparkMark size={26} />
+                </span>
+                <span>Genspark AI</span>
+              </button>
+              <button
+                type="button"
+                className="rb-big ai-entry"
+                data-tip={t('aiRestyleBtn')}
+                disabled={off}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => p.onAiPreset(t('aiRestylePrompt'))}
               >
                 <span className="rb-big-icon">
                   <span className="ai-feature-icon" aria-hidden="true">
-                    <IconPalette size={24} />
+                    <IconWand size={24} />
                   </span>
                 </span>
-                <span>{t('aiThemeBtn')}</span>
+                <span>{t('aiRestyleBtn')}</span>
               </button>
-              {themeOpen && (
-                <div className="rb-menu" role="menu">
-                  {THEME_DIRECTIONS.map((key) => (
-                    <button
-                      key={key}
-                      type="button"
-                      role="menuitem"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => {
-                        setThemeOpen(false)
-                        p.onAiPreset(t('aiThemePrompt', { direction: t(key) }))
-                      }}
-                    >
-                      {t(key)}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <button
-              type="button"
-              className="rb-big ai-entry"
-              data-tip={t('aiSummarizeBtn')}
-              disabled={off}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => p.onAiPreset(t('aiSummarizePrompt'))}
-            >
-              <span className="rb-big-icon">
-                <span className="ai-feature-icon" aria-hidden="true">
-                  <IconSummarize size={24} />
+              <div className="rb-menu-wrap" ref={themeRef}>
+                <button
+                  type="button"
+                  className={`rb-big ai-entry${themeOpen ? ' active' : ''}`}
+                  data-tip={t('aiThemeBtn')}
+                  aria-haspopup="menu"
+                  aria-expanded={themeOpen}
+                  disabled={off}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => setThemeOpen((v) => !v)}
+                >
+                  <span className="rb-big-icon">
+                    <span className="ai-feature-icon" aria-hidden="true">
+                      <IconPalette size={24} />
+                    </span>
+                  </span>
+                  <span>{t('aiThemeBtn')}</span>
+                </button>
+                {themeOpen && (
+                  <div className="rb-menu" role="menu">
+                    {THEME_DIRECTIONS.map((key) => (
+                      <button
+                        key={key}
+                        type="button"
+                        role="menuitem"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          setThemeOpen(false)
+                          p.onAiPreset(t('aiThemePrompt', { direction: t(key) }))
+                        }}
+                      >
+                        {t(key)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                className="rb-big ai-entry"
+                data-tip={t('aiSummarizeBtn')}
+                disabled={off}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => p.onAiPreset(t('aiSummarizePrompt'))}
+              >
+                <span className="rb-big-icon">
+                  <span className="ai-feature-icon" aria-hidden="true">
+                    <IconSummarize size={24} />
+                  </span>
                 </span>
-              </span>
-              <span>{t('aiSummarizeBtn')}</span>
-            </button>
+                <span>{t('aiSummarizeBtn')}</span>
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="rb-sep" />
 

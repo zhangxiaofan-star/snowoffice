@@ -36,7 +36,10 @@ async function click(button: HTMLButtonElement): Promise<void> {
   })
 }
 
-describe('Settings AI panel preferences', () => {
+// Skipped while AI_ENABLED is false: the General pane hides the AI panel
+// preference rows, so the modal under test renders none of this UI. The
+// settings themselves are unchanged; flip the flag back to re-enable.
+describe.skip('Settings AI panel preferences', () => {
   it('shows the saved spellcheck state and persists the toggle as a patch', async () => {
     let saved: AiPanelPrefs = {
       fontSize: 'large',

@@ -2,6 +2,9 @@ import { test, expect } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { launchShell, closeAndSaveVideo, screenshotPath } from './helpers'
+import { AI_ENABLED } from './ai-flag'
+
+test.skip(!AI_ENABLED, 'AI features are disabled in this build (e2e/ai-flag.ts)')
 
 test('Jev reranking lives in the AI Media & Search pane, saves with it, and reports its own test verdict', async () => {
   // the star prompt card sits over the pane footer on a small window

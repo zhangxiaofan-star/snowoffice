@@ -69,6 +69,7 @@ import { CustomShowDialog } from './components/CustomShowDialog'
 import { PrintDialog } from './components/PrintDialog'
 import { FindReplaceDialog } from './components/FindReplaceDialog'
 import { formatClock, type CustomShow } from './slideshow-utils'
+import { AI_ENABLED } from '@genoffice/electron-utils/ai-flag'
 import { ContextMenu } from './components/ContextMenu'
 import { ShapeGalleryPopover } from './components/ShapeGalleryPopover'
 import { PasteOptionsFloater } from './components/PasteOptionsFloater'
@@ -3462,7 +3463,7 @@ export function App() {
       />
 
       <div className="app-main">
-        {slide && viewMode !== 'reading' && viewMode !== 'sorter' && (
+        {slide && AI_ENABLED && viewMode !== 'reading' && viewMode !== 'sorter' && (
           <div className={`ai-dock${showAi && aiSettings ? '' : ' collapsed'}`}>
             {/* always mounted once settings load: collapse must not drop state or in-flight runs */}
             {aiSettings ? (
@@ -3844,57 +3845,59 @@ export function App() {
                             : undefined
                         }
                       >
-                        <div className="stage-ai-bar">
-                          <div className="stage-ai-group">
-                            <button
-                              className={`stage-ai-btn${showAi ? ' active' : ''}`}
-                              data-tip={t('aiOpenAssistant')}
-                              onClick={toggleAi}
-                            >
-                              <GensparkMark size={14} />
-                              <span>Genspark AI</span>
-                            </button>
-                            {/* Same one-click presets as the Home tab; hidden instead of
+                        {AI_ENABLED && (
+                          <div className="stage-ai-bar">
+                            <div className="stage-ai-group">
+                              <button
+                                className={`stage-ai-btn${showAi ? ' active' : ''}`}
+                                data-tip={t('aiOpenAssistant')}
+                                onClick={toggleAi}
+                              >
+                                <GensparkMark size={14} />
+                                <span>Genspark AI</span>
+                              </button>
+                              {/* Same one-click presets as the Home tab; hidden instead of
                         disabled while the deck has no real content */}
-                            {!deckEmpty && (
-                              <>
-                                <span className="stage-ai-divider" aria-hidden="true" />
-                                <button
-                                  className="stage-ai-btn"
-                                  data-tip={t('aiBeautifyBtn')}
-                                  onClick={() =>
-                                    pushAiPreset(
-                                      t('aiBeautifyPrompt'),
-                                      true,
-                                      undefined,
-                                      undefined,
-                                      true,
-                                    )
-                                  }
-                                >
-                                  <IconAiBeautify size={14} />
-                                  <span>{t('aiBeautifyBtn')}</span>
-                                </button>
-                                <button
-                                  className="stage-ai-btn"
-                                  data-tip={t('aiFactCheckBtn')}
-                                  onClick={() => pushAiPreset(t('aiFactCheckPrompt'))}
-                                >
-                                  <IconAiFactCheck size={14} />
-                                  <span>{t('aiFactCheckBtn')}</span>
-                                </button>
-                                <button
-                                  className="stage-ai-btn"
-                                  data-tip={t('aiImageBtn')}
-                                  onClick={() => pushAiPreset(t('aiImagePrompt'))}
-                                >
-                                  <IconAiImage size={14} />
-                                  <span>{t('aiImageBtn')}</span>
-                                </button>
-                              </>
-                            )}
+                              {!deckEmpty && (
+                                <>
+                                  <span className="stage-ai-divider" aria-hidden="true" />
+                                  <button
+                                    className="stage-ai-btn"
+                                    data-tip={t('aiBeautifyBtn')}
+                                    onClick={() =>
+                                      pushAiPreset(
+                                        t('aiBeautifyPrompt'),
+                                        true,
+                                        undefined,
+                                        undefined,
+                                        true,
+                                      )
+                                    }
+                                  >
+                                    <IconAiBeautify size={14} />
+                                    <span>{t('aiBeautifyBtn')}</span>
+                                  </button>
+                                  <button
+                                    className="stage-ai-btn"
+                                    data-tip={t('aiFactCheckBtn')}
+                                    onClick={() => pushAiPreset(t('aiFactCheckPrompt'))}
+                                  >
+                                    <IconAiFactCheck size={14} />
+                                    <span>{t('aiFactCheckBtn')}</span>
+                                  </button>
+                                  <button
+                                    className="stage-ai-btn"
+                                    data-tip={t('aiImageBtn')}
+                                    onClick={() => pushAiPreset(t('aiImagePrompt'))}
+                                  >
+                                    <IconAiImage size={14} />
+                                    <span>{t('aiImageBtn')}</span>
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           </div>
-                        </div>
+                        )}
                         <div
                           ref={stageScaleRef}
                           className="stage-scale"
@@ -4497,11 +4500,10 @@ export function App() {
         !cropTarget &&
         !cutoutTarget &&
         inkTool === 'select' &&
-        selectedIds.length > 0 && (
-          <AiAskTrigger getAnchorRect={getAskTriggerRect} onOpen={openAskPopover} />
-        )}
+        selectedIds.length > 0 &&
+        AI_ENABLED && <AiAskTrigger getAnchorRect={getAskTriggerRect} onOpen={openAskPopover} />}
 
-      {askState && askTargets.length > 0 && (
+      {AI_ENABLED && askState && askTargets.length > 0 && (
         <AiAskPopover
           targets={askTargets}
           getAnchorRect={getAskAnchorRect}

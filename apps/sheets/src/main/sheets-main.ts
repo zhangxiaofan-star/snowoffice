@@ -55,6 +55,7 @@ import {
   rendererUrl,
   writeJsonAtomic,
 } from '@genoffice/electron-utils'
+import { AI_ENABLED } from '@genoffice/electron-utils/ai-flag'
 import { createI18n, getUiLang, type Lang, normalizeLang, setUiLang } from '@genoffice/i18n'
 import { ProjectStore } from '@genoffice/project-store'
 
@@ -3266,6 +3267,7 @@ let aiIpcRegistered = false
 
 export function registerSheetsAiIpc(): void {
   if (aiIpcRegistered) return
+  if (!AI_ENABLED) return
   aiIpcRegistered = true
   app.once('before-quit', shutdownCodexAppServers)
 

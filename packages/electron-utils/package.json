@@ -7,6 +7,7 @@
   "description": "Shared helpers for the Electron main processes (no Electron dependency, pure TS)",
   "exports": {
     ".": "./src/index.ts",
+    "./ai-flag": "./src/ai-flag.ts",
     "./atomic-write": "./src/atomic-write.ts",
     "./drop-open": "./src/drop-open.ts",
     "./generated-images": "./src/generated-images.ts",

@@ -103,6 +103,7 @@ import { hfCommitTarget, hfLinked, resolveHf, withHfLink, type HfSectionState } 
 import { hfLayoutResolved, hfPhantomSpec, hfWithPhantom } from './hf-phantom'
 import { textColorValue } from './editor/text-color'
 import { textOutlineCssValue } from './editor/text-outline'
+import { AI_ENABLED } from '@genoffice/electron-utils/ai-flag'
 import { AiAskPopover } from './components/AiAskPopover'
 import { EDIT_QUEUE_MAX, selectionForAnchor, type DocsEditQueueItem } from './ai/edit-queue'
 import { addQueueAnchor, clearQueueAnchors, removeQueueAnchors } from './editor/ai-queue-anchors'
@@ -6872,7 +6873,7 @@ export function App() {
       />
 
       <div className="app-main">
-        {doc && (
+        {doc && AI_ENABLED && (
           <div className={`ai-dock${showAi ? '' : ' collapsed'}`}>
             {/* always mounted: collapse must not drop state or in-flight runs */}
             <AiPanel
@@ -6930,7 +6931,7 @@ export function App() {
                 onClose={closeNav}
               />
             )}
-            {doc && (
+            {doc && AI_ENABLED && (
               <AiAskPopover
                 editor={editor}
                 queueFull={editQueue.length >= EDIT_QUEUE_MAX}

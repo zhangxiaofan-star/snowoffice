@@ -34,6 +34,7 @@ import {
   type LegacyAiSettings,
 } from '@genoffice/ai-provider'
 import { shutdownCodexAppServers } from '@genoffice/ai-provider/codex-app-server'
+import { AI_ENABLED } from '@genoffice/electron-utils/ai-flag'
 import {
   MAX_REMOTE_IMAGE_BYTES,
   fetchRemoteImage,
@@ -101,6 +102,7 @@ function appendRunFailure(entry: AiRunFailure): void {
 }
 
 export function registerAiIpc(): void {
+  if (!AI_ENABLED) return
   app.once('before-quit', shutdownCodexAppServers)
   // Node fetch (undici) direct connections get reset under VPN/tun setups; retry over Chromium's stack
   setRescueFetch((url, init) => net.fetch(url, init))
@@ -252,6 +254,7 @@ export function registerAiIpc(): void {
 // never called; docs does not have these channels, so putting them in the wrong place raises
 // "No handler registered".
 export function registerSlidesOnlyAiIpc(): void {
+  if (!AI_ENABLED) return
   // gsk (Genspark CLI) capabilities: AI image generation / media analysis. Returns an error prompt when not logged in.
   ipcMain.handle(
     'ai:generate-image',
