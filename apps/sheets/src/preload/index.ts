@@ -330,6 +330,9 @@ const desktopApi: DesktopApi = {
     return result as
       { canceled: true; saveAsXlsxInstead?: boolean } | { canceled: false; path: string }
   },
+  async exportText(request: { fileName: string; content: string }) {
+    return (await ipcRenderer.invoke(IPC_CHANNELS.exportText, request)) as { canceled: boolean }
+  },
   async confirmCsvSave() {
     const result: unknown = await ipcRenderer.invoke(IPC_CHANNELS.csvSaveConfirm)
     if (result !== 'csv' && result !== 'xlsx' && result !== 'cancel') {

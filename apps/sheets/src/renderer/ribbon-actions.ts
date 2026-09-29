@@ -65,6 +65,7 @@ import {
 } from './edit-journal'
 import { applyShowFormulasView, formulaViewSheets } from './formula-view'
 import { t } from './i18n/locale'
+import { copySelectionAsMarkdown, exportSelectionToFile } from './range-export'
 import { requestCellsAction } from './insert-delete-cells'
 import type { CellsMode } from './insert-delete-cells'
 import { mergeWorkbooksIntoCurrent } from './merge-workbooks'
@@ -203,6 +204,36 @@ export function handleRibbonCommand(ctx: RibbonCommandContext, command: string):
   if (!runtime) return
   if (command === 'undo' || command === 'redo') {
     void runtime.univerAPI[command]()
+    return
+  }
+  if (command === 'selection-copy-md') {
+    const wb = runtime.univerAPI.getActiveWorkbook()
+    const activeRange = wb?.getActiveRange()
+    const readRange = activeRange
+      ? {
+          getRow: () => activeRange.getRow(),
+          getColumn: () => activeRange.getColumn(),
+          getHeight: () => activeRange.getHeight(),
+          getWidth: () => activeRange.getWidth(),
+          getValues: () => activeRange.getValues() as (string | number | boolean | null)[][],
+        }
+      : null
+    void copySelectionAsMarkdown({ univerAPI: { getActiveWorkbook: () => ({ getActiveRange: () => readRange }) } }, ctx.setMessage)
+    return
+  }
+  if (command === 'selection-export') {
+    const wb = runtime.univerAPI.getActiveWorkbook()
+    const activeRange = wb?.getActiveRange()
+    const readRange = activeRange
+      ? {
+          getRow: () => activeRange.getRow(),
+          getColumn: () => activeRange.getColumn(),
+          getHeight: () => activeRange.getHeight(),
+          getWidth: () => activeRange.getWidth(),
+          getValues: () => activeRange.getValues() as (string | number | boolean | null)[][],
+        }
+      : null
+    void exportSelectionToFile({ univerAPI: { getActiveWorkbook: () => ({ getActiveRange: () => readRange }) } }, ctx.setMessage)
     return
   }
   if (command.startsWith('error:')) {

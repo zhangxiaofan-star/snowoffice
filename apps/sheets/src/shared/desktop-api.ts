@@ -2411,6 +2411,11 @@ export type WorkbookPrintResult = z.infer<typeof workbookPrintResultSchema>
 
 /// CSV export of the active sheet: the renderer serializes display values,
 /// the main process runs the loss warning + save dialog and writes the bytes.
+export const workbookExportTextRequestSchema = z
+  .object({
+    fileName: z.string().min(1).max(255),
+    content: z.string(),
+  })
 export const workbookExportCsvRequestSchema = z
   .object({
     fileName: z.string().min(1).max(255),
@@ -2623,6 +2628,7 @@ export interface DesktopApi {
   exportPdf(request: WorkbookExportPdfRequest): Promise<WorkbookExportPdfResult>
   printWorkbook(request: WorkbookExportPdfRequest): Promise<WorkbookPrintResult>
   exportCsv(request: WorkbookExportCsvRequest): Promise<WorkbookExportCsvResult>
+  exportText(request: { fileName: string; content: string }): Promise<{ canceled: boolean }>
   /// First Save of a CSV session: native "keep this format?" dialog.
   confirmCsvSave(): Promise<'csv' | 'xlsx' | 'cancel'>
   /// AI create_document: write a new standalone file into the default save

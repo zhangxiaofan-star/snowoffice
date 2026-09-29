@@ -130,6 +130,7 @@ import {
   workbookPivotDefinitionSchema,
   workbookCreateDocumentRequestSchema,
   workbookExportCsvRequestSchema,
+  workbookExportTextRequestSchema,
   workbookExportPdfRequestSchema,
   workbookRangeRequestSchema,
   workbookRangeResultSchema,
@@ -2974,6 +2975,32 @@ export function registerSheetsIpc(): void {
     return printWorkbook(event, workbookExportPdfRequestSchema.parse(input))
   })
 
+  ipcMain.handle(IPC_CHANNELS.exportText, async (event, input: unknown) => {
+    sessionFor(event)
+    const request = workbookExportTextRequestSchema.parse(input)
+    const parent = dialogParent(event)
+    const ext = request.fileName.toLowerCase().endsWith('.json')
+      ? 'json'
+      : request.fileName.toLowerCase().endsWith('.csv')
+        ? 'csv'
+        : 'md'
+    const selection = await saveFileDialog(event, {
+      defaultPath: request.fileName,
+      filters: [{ name: ext.toUpperCase(), extensions: [ext] }],
+    })
+    if (selection.canceled || !selection.filePath) return { canceled: true }
+    let pickedPath = selection.filePath
+    if (ext === 'csv' && !pickedPath.toLowerCase().endsWith('.csv')) pickedPath += '.csv'
+    // Markdown/JSON stay BOM-less UTF-8; CSV keeps the Excel-friendly BOM
+    const bytes =
+      ext === 'csv'
+        ? Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(request.content, 'utf8')])
+        : Buffer.from(request.content, 'utf8')
+    const tempPath = pickedPath + '.tmp-export'
+    writeFileSync(tempPath, bytes)
+    renameSync(tempPath, pickedPath)
+    return { canceled: false }
+  })
   ipcMain.handle(IPC_CHANNELS.exportCsv, async (event, input: unknown) => {
     const entry = sessionFor(event)
     const request = workbookExportCsvRequestSchema.parse(input)

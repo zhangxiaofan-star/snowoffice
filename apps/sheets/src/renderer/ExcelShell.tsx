@@ -2333,6 +2333,20 @@ function Ribbon({
           />
           <RibbonButton
             large
+            label={t('appCopySelectionMd')}
+            detail={t('appInSelection')}
+            symbol="⇩"
+            onClick={() => onCommand('selection-copy-md')}
+          />
+          <RibbonButton
+            large
+            label={t('appExportSelection')}
+            detail={t('appInSelection')}
+            symbol="↧"
+            onClick={() => onCommand('selection-export')}
+          />
+          <RibbonButton
+            large
             label={t('appRemoveDuplicates')}
             detail={t('appInSelection')}
             symbol="⧉"
