@@ -104,6 +104,18 @@ export interface LibrarySnapshotInfo {
   sizeBytes: number
 }
 
+export type LibrarySnapshotDiffLine = { type: 'add' | 'del' | 'ctx'; text: string }
+
+export interface LibrarySnapshotDiff {
+  kind: 'text' | 'binary'
+  adds?: number
+  dels?: number
+  lines?: LibrarySnapshotDiffLine[]
+  truncated?: boolean
+  snapshotBytes?: number
+  currentBytes?: number
+  identical?: boolean
+}
 export interface LibraryEntryInfo {
   /** the copy under userData/library — the path every editor works on */
   libPath: string
@@ -239,6 +251,8 @@ export interface HomeApi {
   pickLibraryDir(current: string): Promise<string | null>
   /** version snapshots of a library copy, newest first */
   librarySnapshots(libPath: string): Promise<LibrarySnapshotInfo[]>
+  /** git-style diff of one snapshot vs the current copy */
+  librarySnapshotDiff(libPath: string, timestamp: number): Promise<LibrarySnapshotDiff | null>
   /** snapshot a library copy right now */
   librarySnapshotCreate(libPath: string): Promise<boolean>
   /** copy a snapshot back over the library copy (open tabs reload) */
@@ -544,6 +558,7 @@ export const HOME_CHANNELS = {
   setLibraryDir: 'home:set-library-dir',
   pickLibraryDir: 'home:pick-library-dir',
   librarySnapshots: 'home:library-snapshots',
+  librarySnapshotDiff: 'home:library-snapshot-diff',
   librarySnapshotCreate: 'home:library-snapshot-create',
   librarySnapshotRestore: 'home:library-snapshot-restore',
   getSessionRestore: 'home:get-session-restore',

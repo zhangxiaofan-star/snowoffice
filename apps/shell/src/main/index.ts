@@ -86,6 +86,7 @@ import {
   listLibrarySnapshots,
   restoreLibrarySnapshot,
   snapshotLibraryCopy,
+  diffLibrarySnapshot,
 } from './library-snapshots'
 import { OPEN_DOCUMENTS_FILE, clearOpenDocuments, publishOpenDocuments } from './open-documents'
 import { startControlServer, type ControlServer } from './control-server'
@@ -4268,7 +4269,13 @@ function registerHomeIpc(): void {
     return ok
   })
 
-  ipcMain.handle(
+    ipcMain.handle(HOME_CHANNELS.librarySnapshotDiff, (_event, libPath: unknown, timestamp: unknown) => {
+    if (typeof libPath !== 'string' || typeof timestamp !== 'number') return null
+    const entry = findLibraryEntryByLibPath(LIBRARY_INDEX_PATH(), libPath)
+    if (!entry) return null
+    return diffLibrarySnapshot(SNAPSHOTS_ROOT(), entry, timestamp)
+  })
+ipcMain.handle(
     HOME_CHANNELS.librarySnapshotRestore,
     (_event, libPath: unknown, timestamp: unknown): boolean => {
       if (typeof libPath !== 'string' || typeof timestamp !== 'number') return false

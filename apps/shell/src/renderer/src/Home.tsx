@@ -31,6 +31,10 @@ import { fileCountLabel, visiblePageCount } from './counts'
 import { useI18n } from './locale'
 import type { I18n, StringKey } from './locale'
 import { CommandPalette } from './CommandPalette'
+import {
+  LibrarySnapshotsModal,
+  type SnapshotDiffView,
+} from './LibrarySnapshotsModal'
 import { SettingsModal } from './SettingsModal'
 import type { SettingsTarget } from './SettingsModal'
 import { skillUpdateDue } from './IntegrationsPane'
@@ -1035,14 +1039,33 @@ function LibraryView() {
   const { t, lang } = i18n
   const [entries, setEntries] = useState<LibraryEntryInfo[] | null>(null)
   const [snapshotsFor, setSnapshotsFor] = useState<LibraryEntryInfo | null>(null)
+  const [snapDiff, setSnapDiff] = useState<SnapshotDiffView | null>(null)
+  const [libraryRowMenu, setLibraryRowMenu] = useState<string | null>(null)
+  const libraryRowMenuWrapRef = useRef<HTMLSpanElement>(null)
   const [snapshots, setSnapshots] = useState<LibrarySnapshotInfo[] | null>(null)
 
   const reload = () => {
     void window.aiOffice.libraryList().then(setEntries)
   }
+  const openDiff = (entry: LibraryEntryInfo, timestamp: number) => {
+    setSnapDiff({ state: 'loading' })
+    void window.aiOffice.librarySnapshotDiff(entry.libPath, timestamp).then((diff) => {
+      setSnapDiff(diff ? { state: 'ready', diff } : { state: 'error' })
+    })
+  }
+  useDismissablePopover(libraryRowMenu !== null, () => setLibraryRowMenu(null), {
+    inside: () => [libraryRowMenuWrapRef.current],
+  })
   const openSnapshots = (entry: LibraryEntryInfo) => {
     setSnapshotsFor(entry)
     setSnapshots(null)
+    setSnapDiff(null)
+  const openDiff = (entry: LibraryEntryInfo, timestamp: number) => {
+    setSnapDiff({ state: 'loading' })
+    void window.aiOffice.librarySnapshotDiff(entry.libPath, timestamp).then((diff) => {
+      setSnapDiff(diff ? { state: 'ready', diff } : { state: 'error' })
+    })
+  }
     void window.aiOffice.librarySnapshots(entry.libPath).then(setSnapshots)
   }
   const restoreSnapshot = (timestamp: number) => {
@@ -1121,7 +1144,12 @@ function LibraryView() {
                       {entry.missing ? '—' : formatModified(entry.importedAt, i18n)}
                     </span>
                     <span className="recent-size">{formatSize(entry.sizeBytes)}</span>
-                    <span className="recent-actions" onClick={(event) => event.stopPropagation()}>
+                    <span
+                      ref={libraryRowMenu === entry.libPath ? libraryRowMenuWrapRef : undefined}
+
+                      className={`recent-actions${libraryRowMenu === entry.libPath ? ' library-row-menu-wrap-open' : ''}`}
+                      onClick={(event) => event.stopPropagation()}
+                    >
                       <button
                         className="selection-action"
                         onClick={() => openSnapshots(entry)}
@@ -1129,21 +1157,50 @@ function LibraryView() {
                         {t('librarySnapshots')}
                       </button>
                       <button
-                        className="selection-action"
-                        onClick={() => void window.aiOffice.libraryRevealOriginal(entry.libPath)}
+                        className="more-btn"
+                        aria-label={t('moreActions')}
+                        onClick={() =>
+                          setLibraryRowMenu(libraryRowMenu === entry.libPath ? null : entry.libPath)
+                        }
                       >
-                        {t('libraryRevealOriginal')}
+                        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                          <circle cx="3.2" cy="8" r="1.4" fill="currentColor" />
+                          <circle cx="8" cy="8" r="1.4" fill="currentColor" />
+                          <circle cx="12.8" cy="8" r="1.4" fill="currentColor" />
+                        </svg>
                       </button>
-                      <button
-                        className="selection-action"
-                        disabled={entry.missing}
-                        onClick={() => reimport(entry.libPath)}
-                      >
-                        {t('libraryReimport')}
-                      </button>
-                      <button className="selection-action" onClick={() => remove(entry.libPath)}>
-                        {t('libraryRemove')}
-                      </button>
+                      {libraryRowMenu === entry.libPath && (
+                        <div className="row-menu" role="menu">
+                          <button
+                            role="menuitem"
+                            onClick={() => {
+                              setLibraryRowMenu(null)
+                              void window.aiOffice.libraryRevealOriginal(entry.libPath)
+                            }}
+                          >
+                            {t('libraryRevealOriginal')}
+                          </button>
+                          <button
+                            role="menuitem"
+                            disabled={entry.missing}
+                            onClick={() => {
+                              setLibraryRowMenu(null)
+                              reimport(entry.libPath)
+                            }}
+                          >
+                            {t('libraryReimport')}
+                          </button>
+                          <button
+                            role="menuitem"
+                            onClick={() => {
+                              setLibraryRowMenu(null)
+                              remove(entry.libPath)
+                            }}
+                          >
+                            {t('libraryRemove')}
+                          </button>
+                        </div>
+                      )}
                     </span>
                   </div>
                 </li>
@@ -1155,6 +1212,8 @@ function LibraryView() {
           <LibrarySnapshotsModal
             entry={snapshotsFor}
             snapshots={snapshots}
+            diff={snapDiff}
+            onDiff={openDiff}
             onClose={() => setSnapshotsFor(null)}
             onRestore={restoreSnapshot}
           />
@@ -1165,55 +1224,6 @@ function LibraryView() {
 }
 
 /** version-history modal for one library copy */
-function LibrarySnapshotsModal({
-  entry,
-  snapshots,
-  onClose,
-  onRestore,
-}: {
-  readonly entry: LibraryEntryInfo
-  readonly snapshots: LibrarySnapshotInfo[] | null
-  readonly onClose: () => void
-  readonly onRestore: (timestamp: number) => void
-}): React.JSX.Element {
-  const i18n = useI18n()
-  const { t } = i18n
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal library-snapshots-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label={t("librarySnapshots")}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <h3>{t("librarySnapshots")}</h3>
-        <p className="modal-file-list-note">{entry.name}</p>
-        {snapshots === null ? (
-          <p className="empty-hint">…</p>
-        ) : snapshots.length === 0 ? (
-          <p className="empty-hint">{t("librarySnapshotEmpty")}</p>
-        ) : (
-          <ul className="library-snapshots-list">
-            {snapshots.map((snapshot) => (
-              <li key={snapshot.timestamp} className="library-snapshots-row">
-                <span>{formatModified(snapshot.timestamp, i18n)}</span>
-                <span className="library-snapshots-size">{formatSize(snapshot.sizeBytes)}</span>
-                <button className="selection-action" onClick={() => onRestore(snapshot.timestamp)}>
-                  {t("librarySnapshotRestore")}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="modal-buttons">
-          <button className="set-btn" onClick={onClose}>{t("cancel")}</button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function CloudProjectsView() {
   const i18n = useI18n()
   const { t } = i18n

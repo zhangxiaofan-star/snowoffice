@@ -17,6 +17,7 @@ import type {
   FolderListing,
   FolderRoot,
   LibraryEntryInfo,
+  LibrarySnapshotDiff,
   LibrarySnapshotInfo,
   MoveResult,
   HomeApi,
@@ -205,6 +206,9 @@ const homeApi: HomeApi = {
   },
   async librarySnapshots(libPath: string) {
     return (await ipcRenderer.invoke(HOME_CHANNELS.librarySnapshots, libPath)) as LibrarySnapshotInfo[]
+  },
+  async librarySnapshotDiff(libPath: string, timestamp: number) {
+    return (await ipcRenderer.invoke(HOME_CHANNELS.librarySnapshotDiff, libPath, timestamp)) as LibrarySnapshotDiff | null
   },
   async librarySnapshotCreate(libPath: string) {
     return (await ipcRenderer.invoke(HOME_CHANNELS.librarySnapshotCreate, libPath)) as boolean
