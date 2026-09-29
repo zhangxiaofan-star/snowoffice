@@ -1,5 +1,5 @@
 /**
- * One-command Windows packaging for GenOffice.
+ * One-command Windows packaging for SnowOffice.
  *
  * Usage (from the repo root, or double-click package.bat):
  *   npm run package:win                    full flow: build everything, pack, verify
@@ -11,7 +11,7 @@
  *   node scripts/package-win.mjs --skip-smoke      don't launch the packed app at the end
  *
  * The version lives in apps/shell/package.json ("version"); it names the
- * installer (GenOffice Setup <version>.exe), the installed app, and is baked
+ * installer (SnowOffice Setup <version>.exe), the installed app, and is baked
  * into the bundled genoffice CLI automatically by electron-builder's
  * beforePack hook.
  *
@@ -34,7 +34,7 @@
  *    installer from the fixed directory via --prepackaged.
  *
  * 4. False smoke-test failure. The packed app takes the app-level single-
- *    instance lock, so while the user's own GenOffice is running the smoke-
+ *    instance lock, so while the user's own SnowOffice is running the smoke-
  *    launched instance quits immediately and the check reports "exited early"
  *    even though the build is fine. The smoke launch points GENOFFICE_USER_DATA
  *    at a scratch dir (separate userData, hence a separate lock) and prints the
@@ -104,7 +104,7 @@ const skipSmoke = flags.has('--skip-smoke')
 // package-last-run.log. appendFileSync per chunk: no buffering, so the log is
 // complete even on process.exit() from a failure path.
 const LOG_PATH = join(ROOT, 'package-last-run.log')
-writeFileSync(LOG_PATH, `=== GenOffice packaging log — started ${new Date().toLocaleString()} ===\n`)
+writeFileSync(LOG_PATH, `=== SnowOffice packaging log — started ${new Date().toLocaleString()} ===\n`)
 // child-command chunks bypass console.* and need explicit forwarding to both
 const logOut = (chunk) => {
   process.stdout.write(chunk)
@@ -233,10 +233,10 @@ function ensureToolchainPaths() {
     // no winget packages dir: the toolchain may already be on the user's PATH
   }
   // also the layouts setup-dev.bat installs to: the winget-independent
-  // GenOfficeTools root (its path is recorded in install-root + the
+  // SnowOfficeTools root (its path is recorded in install-root + the
   // GENOFFICE_TOOLS_ROOT user env var), wherever the user pointed it
   const toolsRoots = []
-  const localToolsRoot = join(process.env.LOCALAPPDATA ?? '', 'GenOfficeTools')
+  const localToolsRoot = join(process.env.LOCALAPPDATA ?? '', 'SnowOfficeTools')
   toolsRoots.push(process.env.GENOFFICE_TOOLS_ROOT)
   try {
     toolsRoots.push(readFileSync(join(localToolsRoot, 'install-root'), 'utf8').trim())
@@ -373,11 +373,11 @@ async function repackAppAsar(dest) {
 // ---- 4. smoke test ----------------------------------------------------------
 
 function smokeTest() {
-  const exe = join(UNPACKED, 'GenOffice.exe')
+  const exe = join(UNPACKED, 'SnowOffice.exe')
   console.log('[smoke] launching the packed app for 8s...')
   return new Promise((resolvePromise) => {
     // Scratch userData: without it the smoke instance fights the user's running
-    // GenOffice for the single-instance lock and quits within a second — a
+    // SnowOffice for the single-instance lock and quits within a second — a
     // perfectly good build then fails the check (pitfall 4 in the header). It
     // also keeps the smoke boot from touching the real profile's databases.
     const smokeUserData = join(RELEASE, 'smoke-user-data')
@@ -408,7 +408,7 @@ function smokeTest() {
           console.error('[smoke] the app printed on stderr:')
           for (const line of lines.slice(-20)) console.error(`  | ${line}`)
         } else {
-          console.error('[smoke] no stderr output; a running GenOffice no longer blocks this')
+          console.error('[smoke] no stderr output; a running SnowOffice no longer blocks this')
         }
       }
       resolvePromise(alive)
@@ -419,7 +419,7 @@ function smokeTest() {
 // ---- main -------------------------------------------------------------------
 
 async function main() {
-  console.log('=== GenOffice Windows packaging ===')
+  console.log('=== SnowOffice Windows packaging ===')
   if (process.platform !== 'win32') {
     console.error('This script packages for Windows and must run on Windows.')
     process.exit(1)
@@ -471,7 +471,7 @@ async function main() {
   }
 
   const shellPkg = JSON.parse(readFileSync(join(SHELL, 'package.json'), 'utf8'))
-  const installer = join(RELEASE, `GenOffice Setup ${shellPkg.version}.exe`)
+  const installer = join(RELEASE, `SnowOffice Setup ${shellPkg.version}.exe`)
   if (!nonEmpty(installer)) {
     console.error(`installer not found: ${installer}`)
     process.exit(1)

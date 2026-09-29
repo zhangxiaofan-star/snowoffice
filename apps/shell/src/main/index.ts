@@ -370,7 +370,7 @@ import { applyUpdateChannel, checkForUpdatesNow, initAutoUpdater } from './updat
 import { isUpdateChannel, type UpdateChannel } from '../shared/update-api'
 
 /**
- * GenOffice unified shell: ONE Electron app, ONE BrowserWindow, hosting the
+ * SnowOffice unified shell: ONE Electron app, ONE BrowserWindow, hosting the
  * docs and sheets modules as WebContentsView tabs behind a WPS-style tab
  * strip. The shell owns the lifecycle — single-instance lock, file-
  * association routing by extension, and per-active-tab menu switching.
@@ -380,7 +380,7 @@ import { isUpdateChannel, type UpdateChannel } from '../shared/update-api'
 
 // ANY unpacked run (`npm run shell`, `npm run dev`, `npx electron .`) must not
 // share the installed app's userData or single-instance lock — otherwise a dev
-// run silently quits and forwards its argv to the running installed GenOffice.
+// run silently quits and forwards its argv to the running installed SnowOffice.
 // GENOFFICE_USER_DATA: test drivers and the packaging script's smoke launch
 // point this at a scratch dir so an automated instance can run alongside a
 // real one — separate userData, hence a separate single-instance lock. Honored
@@ -389,7 +389,7 @@ import { isUpdateChannel, type UpdateChannel } from '../shared/update-api'
 if (!app.isPackaged || process.env.GENOFFICE_USER_DATA)
   app.setPath(
     'userData',
-    process.env.GENOFFICE_USER_DATA ?? join(app.getPath('appData'), 'GenOffice Dev'),
+    process.env.GENOFFICE_USER_DATA ?? join(app.getPath('appData'), 'SnowOffice Dev'),
   )
 
 /**
@@ -404,12 +404,17 @@ if (headlessArgv.kind !== 'none') {
   app.dock?.hide()
 }
 
-// The product rename from "AI Office" to GenOffice changed the userData path; migrate old user data once
+// Product renames changed the userData path (AI Office -> GenOffice ->
+// SnowOffice); migrate the old profile once when the new location is empty.
 if (app.isPackaged) {
-  const oldDir = join(app.getPath('appData'), 'AI Office')
   const newDir = app.getPath('userData')
   const newEmpty = !existsSync(newDir) || readdirSync(newDir).length === 0
-  if (newEmpty && existsSync(oldDir)) cpSync(oldDir, newDir, { recursive: true })
+  if (newEmpty) {
+    const appData = app.getPath('appData')
+    const candidates = [join(appData, 'GenOffice'), join(appData, 'AI Office')]
+    const oldDir = candidates.find((dir) => existsSync(dir) && readdirSync(dir).length > 0)
+    if (oldDir) cpSync(oldDir, newDir, { recursive: true })
+  }
 }
 
 // module build outputs: packaged builds carry them as extraResources
@@ -500,7 +505,7 @@ const SNAPSHOTS_ROOT = () => join(app.getPath('userData'), 'library-snapshots')
 let librarySnapshotWatcher: FolderWatcher | null = null
 const libraryMtimeCache = new Map<string, number>()
 let librarySnapshotFlushTimer: NodeJS.Timeout | null = null
-const LIBRARY_REG_KEY = 'HKCU\\Software\\GenOffice'
+const LIBRARY_REG_KEY = 'HKCU\\Software\\SnowOffice'
 
 let cachedLibraryDir: string | null = null
 let libraryDirSeedDone = false
@@ -517,7 +522,20 @@ function consumeLibraryDirSeed(): void {
     if (query.status === 0) {
       const match = /LibraryDir\s+REG_SZ\s+(.+)/.exec(query.stdout ?? '')
       const dir = match?.[1]?.trim()
-      if (dir && isAbsolute(dir)) writeAppSetting(APP_SETTINGS_PATH(), 'libraryDir', dir)
+      if (dir && isAbsolute(dir)) {
+        writeAppSetting(APP_SETTINGS_PATH(), 'libraryDir', dir)
+        // bring copies imported under the previous location along
+        try {
+          const from = join(app.getPath('userData'), 'library')
+          mkdirSync(dir, { recursive: true })
+          const migration = migrateLibraryDir(LIBRARY_INDEX_PATH(), from, resolve(dir))
+          if (migration.moved > 0) {
+            console.log('[library] seed adoption moved', migration.moved, 'copies')
+          }
+        } catch (err) {
+          console.warn('[library] seed migration failed:', err instanceof Error ? err.message : err)
+        }
+      }
     }
     spawnSync('reg', ['delete', LIBRARY_REG_KEY, '/v', 'LibraryDir', '/f'], { stdio: 'ignore' })
   } catch {
@@ -3226,7 +3244,7 @@ function createShellWindow(): void {
     height: 900,
     minWidth: 720,
     minHeight: 550,
-    title: 'GenOffice',
+    title: 'SnowOffice',
     // vibrancy: editor modules punch translucent regions (e.g. the slides
     // thumbnail pane) through to the desktop
     ...(process.platform === 'darwin'
@@ -3779,7 +3797,7 @@ function newDocTab(): void {
 
 /** MCP: open a blank docs tab and return its webContents id, for the visible-editor bridge */
 function openBlankDocsTabForMcp(): number {
-  if (!tabManager) throw new Error('GenOffice is not ready')
+  if (!tabManager) throw new Error('SnowOffice is not ready')
   const tabId = tabManager.openDocsTab(undefined, { newBlank: true })
   const view = tabManager.docsTabs().find((t) => t.id === tabId)
   if (!view) throw new Error('the new document tab could not be opened')
@@ -3796,7 +3814,7 @@ function openBlankDocsTabForMcp(): number {
  * marking is skipped, the file name is the agent's business.
  */
 async function openBlankSheetsTabForMcp(): Promise<number> {
-  if (!tabManager) throw new Error('GenOffice is not ready')
+  if (!tabManager) throw new Error('SnowOffice is not ready')
   const filePath = uniquePathIn(defaultSaveDir(), `${tm('untitledSheet')}.xlsx`)
   await atomicWriteFile(filePath, await blankXlsxBuffer())
   const tabId = tabManager.openSheetsTab(filePath)
@@ -3867,7 +3885,7 @@ function abandonBlankTabForMcp(
 
 /** MCP: open a blank slides tab and return its webContents id, for the visible-deck bridge */
 function openBlankSlidesTabForMcp(): number {
-  if (!tabManager) throw new Error('GenOffice is not ready')
+  if (!tabManager) throw new Error('SnowOffice is not ready')
   const tabId = tabManager.openSlidesTab()
   const view = tabManager.slidesTabs().find((t) => t.id === tabId)
   if (!view) throw new Error('the new presentation tab could not be opened')
@@ -3962,7 +3980,7 @@ function statEntries(paths: string[]): RecentEntry[] {
 }
 
 function registerHomeIpc(): void {
-  // signed-in means GenOffice's own device-code login; the shared gsk CLI key
+  // signed-in means SnowOffice's own device-code login; the shared gsk CLI key
   // is only a silent fallback, deliberately not shown here to nudge users onto our key
   ipcMain.handle(HOME_CHANNELS.accountStatus, async () => {
     if (!loadGenofficeAuth()) return { loggedIn: false }
@@ -6036,7 +6054,7 @@ app.whenReady().then(async () => {
     app.quit()
     return
   }
-  // another GenOffice-family app re-logging in rotates the shared key; the
+  // another SnowOffice-family app re-logging in rotates the shared key; the
   // home page re-reads its account status. A logout that leaves only the
   // gsk CLI fallback key is not a login
   stopAuthWatch = watchGskApiKey(() => {

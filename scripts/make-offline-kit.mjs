@@ -136,12 +136,12 @@ copyFileSync(join(ROOT, 'setup-dev.bat'), join(KIT, 'setup-dev.bat'))
 writeFileSync(
   join(KIT, 'README.txt'),
   [
-    'GenOffice 离线开发环境包',
+    'SnowOffice 离线开发环境包',
     '========================',
     '',
     '用法：把整个仓库文件夹（offline-kit 在仓库根目录里，一起拷走）复制到新电脑，',
     '然后双击 offline-kit\\setup-dev.bat。它会先问你一个安装根目录，',
-    '默认为 D:\\Program Files\\GenOffice（直接回车就是它，也可以自己输入路径），',
+    '默认为 D:\\Program Files\\SnowOffice（直接回车就是它，也可以自己输入路径），',
     '随后安装（不需要管理员，目录不可写时自动退回用户目录）：',
     '  <根目录>\\node     便携版 Node.js',
     '  <根目录>\\cargo + <根目录>\\rustup     Rust 工具链',

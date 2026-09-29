@@ -5477,6 +5477,13 @@ async function preloadEntireWorkbookInner(
     state.flags.preloadComplete = true
     if (state.formulaMode && !isManualCalculation(runtime)) requestFullRecalcAfterStream()
     setMessage(t('appFullyLoaded'))
+    // The render canvas can keep a stale size when the window is maximized or
+    // resized while the stream is in flight (grid renders at half width).
+    // Nudge Univer's render service to re-measure now and after a beat.
+    const recalcCanvas = () => window.dispatchEvent(new Event('resize'))
+    recalcCanvas()
+    window.setTimeout(recalcCanvas, 400)
+    window.setTimeout(recalcCanvas, 1200)
   }
 }
 

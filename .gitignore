@@ -44,3 +44,4 @@ _scratch-*
 
 # Offline toolchain kit built by scripts/make-offline-kit.mjs (gigabytes, machine-local)
 /offline-kit/
+/.rename-changed.txt

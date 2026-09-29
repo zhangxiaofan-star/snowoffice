@@ -5,9 +5,9 @@ import { isGenofficeLauncher, mcpSnippet, readMcpEntry, writeMcpEntry } from '..
 import { mcpLaunch, mcpLaunchFromLauncher, type McpLaunch } from '../src/mcp-launch'
 import { tempDir } from './helpers'
 
-const WIN_DIR = 'C:\\Users\\Jane Doe\\AppData\\Local\\Programs\\GenOffice\\resources\\cli'
+const WIN_DIR = 'C:\\Users\\Jane Doe\\AppData\\Local\\Programs\\SnowOffice\\resources\\cli'
 const WIN_APP: McpLaunch = {
-  command: `${WIN_DIR}\\..\\..\\GenOffice.exe`,
+  command: `${WIN_DIR}\\..\\..\\SnowOffice.exe`,
   args: [`${WIN_DIR}\\genoffice.cjs`, 'mcp'],
   env: { ELECTRON_RUN_AS_NODE: '1' },
 }
@@ -15,15 +15,15 @@ const WIN_APP: McpLaunch = {
 describe('mcp launch entry', () => {
   it('is the absolute launcher on macOS and Linux', () => {
     expect(
-      mcpLaunchFromLauncher('/Applications/GenOffice.app/Contents/Resources/cli/genoffice'),
+      mcpLaunchFromLauncher('/Applications/SnowOffice.app/Contents/Resources/cli/genoffice'),
     ).toEqual({
-      command: '/Applications/GenOffice.app/Contents/Resources/cli/genoffice',
+      command: '/Applications/SnowOffice.app/Contents/Resources/cli/genoffice',
       args: ['mcp'],
     })
   })
 
   it('runs the packaged Windows app as Node on the bundle, exactly as the app snippet does', () => {
-    const exists = (p: string) => p === `${WIN_DIR}\\..\\..\\GenOffice.exe`
+    const exists = (p: string) => p === `${WIN_DIR}\\..\\..\\SnowOffice.exe`
     const fromCli = mcpLaunchFromLauncher(`${WIN_DIR}\\genoffice.cmd`, { exists })
     expect(fromCli).toEqual(WIN_APP)
     expect(fromCli).toEqual(mcpLaunch({ status: 'missing', launcherDir: WIN_DIR }))
@@ -45,9 +45,9 @@ describe('mcp launch entry', () => {
   })
 
   it('recognises every launcher shape as ours', () => {
-    expect(isGenofficeLauncher('/opt/GenOffice/resources/cli/genoffice')).toBe(true)
-    expect(isGenofficeLauncher('C:\\GenOffice\\resources\\cli\\genoffice.cmd')).toBe(true)
-    expect(isGenofficeLauncher('C:\\Program Files\\GenOffice\\GenOffice.exe')).toBe(true)
+    expect(isGenofficeLauncher('/opt/SnowOffice/resources/cli/genoffice')).toBe(true)
+    expect(isGenofficeLauncher('C:\\SnowOffice\\resources\\cli\\genoffice.cmd')).toBe(true)
+    expect(isGenofficeLauncher('C:\\Program Files\\SnowOffice\\SnowOffice.exe')).toBe(true)
     expect(isGenofficeLauncher(WIN_APP.command, WIN_APP.args)).toBe(true)
     expect(
       isGenofficeLauncher('node', ['C:\\src\\packages\\cli\\dist\\genoffice.cjs', 'mcp']),
@@ -108,11 +108,11 @@ describe('mcp launch entry', () => {
     expect(mcpSnippet('codex', WIN_APP)).toContain('[mcp_servers.genoffice.env]')
   })
 
-  it('treats the app snippet entry (GenOffice.exe on genoffice.cjs) as ours, not occupied', () => {
+  it('treats the app snippet entry (SnowOffice.exe on genoffice.cjs) as ours, not occupied', () => {
     const home = tempDir()
     const file = join(home, 'mcp.json')
     writeFileSync(file, JSON.stringify({ mcpServers: { genoffice: WIN_APP } }))
-    const posix = { command: '/opt/GenOffice/resources/cli/genoffice', args: ['mcp'] }
+    const posix = { command: '/opt/SnowOffice/resources/cli/genoffice', args: ['mcp'] }
     expect(readMcpEntry('cursor', file, posix)).toEqual({
       status: 'stale',
       command: WIN_APP.command,

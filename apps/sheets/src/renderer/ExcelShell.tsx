@@ -83,7 +83,16 @@ import { ZoomDialog } from './ZoomDialog'
 
 // No File tab: file commands live in the macOS
 // application menu (File → Open/Save/Save As) and the toolbar icons.
-const ribbonTabs = ['Home', 'Insert', 'Page Layout', 'Formulas', 'Data', 'Review', 'View'] as const
+const ribbonTabs = [
+  'Home',
+  'Insert',
+  'Page Layout',
+  'Formulas',
+  'Data',
+  'SnowAdvanced',
+  'Review',
+  'View',
+] as const
 
 /// 'Chart Design' is contextual: it exists only while a chart is selected,
 /// and appears without stealing the active tab.
@@ -97,6 +106,7 @@ const TAB_LABEL: Record<RibbonTab, StringKey> = {
   'Page Layout': 'appTabPageLayout',
   Formulas: 'appTabFormulas',
   Data: 'appTabData',
+  SnowAdvanced: 'appTabSnowAdvanced',
   Review: 'appTabReview',
   View: 'appTabView',
   'Chart Design': 'appTabChartDesign',
@@ -2116,6 +2126,56 @@ function Ribbon({
     )
   }
 
+  if (activeTab === 'SnowAdvanced') {
+    return (
+      <div className="ribbon" data-ribbon-body="">
+        <RibbonGroup label={t('appGroupSnowData')}>
+          <RibbonButton
+            large
+            label={t('frproTitle')}
+            detail={t('frproSubtitle')}
+            symbol="⌕"
+            onClick={() => onCommand('frpro-open')}
+          />
+          {largeMenu(t('appColClean'), '✧', t('appColCleanTitle'), [
+            { value: 'colclean-fill-down', label: t('appColCleanFillDown') },
+            { value: 'colclean-to-number', label: t('appColCleanToNumber') },
+            { value: 'colclean-affix-open', label: t('appColCleanAffix') },
+          ])}
+          <RibbonButton
+            large
+            label={t('appCopySelectionMd')}
+            detail={t('appInSelection')}
+            symbol="⇩"
+            onClick={() => onCommand('selection-copy-md')}
+          />
+          <RibbonButton
+            large
+            label={t('appExportSelection')}
+            detail={t('appInSelection')}
+            symbol="↧"
+            onClick={() => onCommand('selection-export')}
+          />
+        </RibbonGroup>
+        <RibbonGroup label={t('appGroupSnowFormulas')}>
+          <RibbonButton
+            large
+            label={t('appFormulaFavorites')}
+            detail={t('appFormulaFavoritesDetail')}
+            symbol="★"
+            onClick={() => onCommand('formula-favorites-open')}
+          />
+          <RibbonButton
+            large
+            label={t('appFormulaSave')}
+            detail={t('appFormulaNoFormula')}
+            symbol="☆"
+            onClick={() => onCommand('formula-favorites-save')}
+          />
+        </RibbonGroup>
+      </div>
+    )
+  }
   if (activeTab === 'Formulas') {
     const definedNames = onListNames()
     // Category buttons all open the same catalog dialog; the per-category
@@ -2141,20 +2201,6 @@ function Ribbon({
             detail={t('appBrowseCatalog')}
             symbol="ƒx"
             onClick={() => onCommand('insert-function-open')}
-          />
-          <RibbonButton
-            large
-            label={t('appFormulaFavorites')}
-            detail={t('appFormulaFavoritesDetail')}
-            symbol="★"
-            onClick={() => onCommand('formula-favorites-open')}
-          />
-          <RibbonButton
-            large
-            label={t('appFormulaSave')}
-            detail={t('appFormulaFavoritesDetail')}
-            symbol="☆"
-            onClick={() => onCommand('formula-favorites-save')}
           />
           <div className="ribbon-tool large" data-tip={t('appAutoSumTitle')}>
             <span className="tool-icon-row">
@@ -2410,32 +2456,6 @@ function Ribbon({
             symbol="⚡"
             onClick={() => onCommand('flash-fill')}
           />
-          <RibbonButton
-            large
-            label={t('appCopySelectionMd')}
-            detail={t('appInSelection')}
-            symbol="⇩"
-            onClick={() => onCommand('selection-copy-md')}
-          />
-          <RibbonButton
-            large
-            label={t('appExportSelection')}
-            detail={t('appInSelection')}
-            symbol="↧"
-            onClick={() => onCommand('selection-export')}
-          />
-          <RibbonButton
-            large
-            label={t('frproTitle')}
-            detail={t('frproSubtitle')}
-            symbol="⌕"
-            onClick={() => onCommand('frpro-open')}
-          />
-          {largeMenu(t('appColClean'), '✧', t('appColCleanTitle'), [
-            { value: 'colclean-fill-down', label: t('appColCleanFillDown') },
-            { value: 'colclean-to-number', label: t('appColCleanToNumber') },
-            { value: 'colclean-affix-open', label: t('appColCleanAffix') },
-          ])}
           <RibbonButton
             large
             label={t('appRemoveDuplicates')}

@@ -17,23 +17,23 @@ describe('genoffice launcher file', () => {
   it('writes one line, creates the directory, and only rewrites on change', () => {
     const dir = mkdtempSync(join(tmpdir(), 'genoffice-launcher-'))
     const file = join(dir, 'nested', 'launcher')
-    expect(writeLauncherFile(file, '/Applications/GenOffice.app/Contents/Resources/cli')).toBe(true)
-    expect(readFileSync(file, 'utf-8')).toBe('/Applications/GenOffice.app/Contents/Resources/cli\n')
+    expect(writeLauncherFile(file, '/Applications/SnowOffice.app/Contents/Resources/cli')).toBe(true)
+    expect(readFileSync(file, 'utf-8')).toBe('/Applications/SnowOffice.app/Contents/Resources/cli\n')
     const before = statSync(file).mtimeMs
-    expect(writeLauncherFile(file, '/Applications/GenOffice.app/Contents/Resources/cli')).toBe(
+    expect(writeLauncherFile(file, '/Applications/SnowOffice.app/Contents/Resources/cli')).toBe(
       false,
     )
     expect(statSync(file).mtimeMs).toBe(before)
-    expect(writeLauncherFile(file, 'C:\\Programs\\GenOffice\\resources\\genoffice')).toBe(true)
-    expect(readFileSync(file, 'utf-8')).toBe('C:\\Programs\\GenOffice\\resources\\genoffice\n')
+    expect(writeLauncherFile(file, 'C:\\Programs\\SnowOffice\\resources\\genoffice')).toBe(true)
+    expect(readFileSync(file, 'utf-8')).toBe('C:\\Programs\\SnowOffice\\resources\\genoffice\n')
   })
 
   it('treats dmg and AppImage mounts as temporary', () => {
-    expect(isEphemeralInstall('/Volumes/GenOffice/GenOffice.app/Contents/Resources', {})).toBe(true)
+    expect(isEphemeralInstall('/Volumes/SnowOffice/SnowOffice.app/Contents/Resources', {})).toBe(true)
     expect(isEphemeralInstall('/tmp/.mount_GenOfxyz/resources', {})).toBe(true)
-    expect(isEphemeralInstall('/opt/GenOffice/resources', { APPIMAGE: '/home/u/G.AppImage' })).toBe(
+    expect(isEphemeralInstall('/opt/SnowOffice/resources', { APPIMAGE: '/home/u/G.AppImage' })).toBe(
       true,
     )
-    expect(isEphemeralInstall('/Applications/GenOffice.app/Contents/Resources', {})).toBe(false)
+    expect(isEphemeralInstall('/Applications/SnowOffice.app/Contents/Resources', {})).toBe(false)
   })
 })

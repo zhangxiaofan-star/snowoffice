@@ -82,7 +82,7 @@ function electronCompatArgs(): string[] {
 
 /**
  * API key for Genspark LLM proxy / tool_cli auth; '' when not logged in.
- * Priority: GSK_API_KEY env → GenOffice's own key (bills to us via its
+ * Priority: GSK_API_KEY env → SnowOffice's own key (bills to us via its
  * key_name) → shared gsk CLI login (bills to the Claw bucket).
  */
 export function gskApiKey(): string {
@@ -100,7 +100,7 @@ export function gskApiKey(): string {
 }
 
 /**
- * Fires when the effective gsk key changes on disk — another GenOffice-family
+ * Fires when the effective gsk key changes on disk — another SnowOffice-family
  * app re-logging in mints a new key and revokes the one this process holds.
  * Polls by path (watchFile): auth.json is replaced whole, and fs.watch misses
  * events for a moment after it is armed.
@@ -531,7 +531,7 @@ async function toolCliPost(
   try {
     const resp = await fetch(`${GSK_TOOL_CLI_BASE}${path}`, {
       method: 'POST',
-      // X-Agent-Type splits GenOffice usage out of the proxy's "Claw" billing bucket
+      // X-Agent-Type splits SnowOffice usage out of the proxy's "Claw" billing bucket
       headers: {
         'X-Api-Key': key,
         'Content-Type': 'application/json',
