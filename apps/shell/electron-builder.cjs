@@ -646,6 +646,10 @@ const config = {
   nsis: {
     oneClick: false,
     allowToChangeInstallationDirectory: true,
+    // the custom library-location page (build/installer.nsh) ships strings for
+    // exactly these three languages; narrowing the wizard keeps every
+    // LangString covered so -WX (warnings as errors) stays on
+    installerLanguages: ['en_US', 'zh_CN', 'zh_TW'],
   },
   beforePack: async (context) => {
     ensurePlatformHelpers()
