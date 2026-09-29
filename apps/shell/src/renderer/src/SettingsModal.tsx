@@ -171,6 +171,62 @@ function LibraryAutoImportRow() {
   )
 }
 
+/** General-pane row: the folder the document library lives in, with pick + reset. */
+function LibraryDirRow() {
+  const { t } = useI18n()
+  const [dir, setDir] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [notice, setNotice] = useState('')
+  useEffect(() => {
+    void window.aiOffice.getLibraryDir().then(setDir)
+  }, [])
+  const change = async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      const picked = await window.aiOffice.pickLibraryDir(dir ?? '')
+      if (picked) {
+        const result = await window.aiOffice.setLibraryDir(picked)
+        setDir(result.dir)
+        setNotice(t('setLibraryDirMoved', { n: result.moved }))
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+  const reset = async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      const result = await window.aiOffice.setLibraryDir('')
+      setDir(result.dir)
+      setNotice(t('setLibraryDirMoved', { n: result.moved }))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="set-field">
+      <div className="set-field-text">
+        <div className="set-field-stack">
+          <div className="set-field-label">{t('setLibraryDir')}</div>
+          <div className="set-field-desc">{t('setLibraryDirDesc')}</div>
+          {dir && <div className="set-field-desc set-mono">{dir}</div>}
+          {notice && <div className="set-field-desc">{notice}</div>}
+        </div>
+      </div>
+      <div className="set-btn-row">
+        <button className="set-btn" disabled={busy} onClick={() => void change()}>
+          {t('setLibraryDirChange')}
+        </button>
+        <button className="set-btn" disabled={busy} onClick={() => void reset()}>
+          {t('setLibraryDirReset')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export type SectionId = 'account' | 'aiModel' | 'aiMedia' | 'general' | 'integrations' | 'about'
 
 const SECTIONS: readonly { id: SectionId; labelKey: StringKey }[] = [
@@ -1523,6 +1579,7 @@ export function SettingsModal({
                   />
                 </div>
                 <LibraryAutoImportRow />
+                <LibraryDirRow />
                 {AI_ENABLED && (
                   <>
                     <div className="set-field">

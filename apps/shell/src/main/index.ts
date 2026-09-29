@@ -1,8 +1,9 @@
-import { execSync, spawn } from 'node:child_process'
+import { execSync, spawn, spawnSync } from 'node:child_process'
 import {
   copyFileSync,
   cpSync,
   existsSync,
+  mkdirSync,
   readFileSync,
   readdirSync,
   renameSync,
@@ -10,7 +11,7 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs'
-import { basename, dirname, extname, join, resolve } from 'node:path'
+import { basename, dirname, extname, isAbsolute, join, resolve } from 'node:path'
 import {
   BrowserWindow,
   Menu,
@@ -74,6 +75,7 @@ import {
 import {
   findLibraryEntryByLibPath,
   readLibraryEntries,
+  migrateLibraryDir,
   removeLibraryEntry,
   resolveLibraryPath,
   reimportLibraryEntry,
@@ -462,12 +464,72 @@ registerPrivilegedSchemes()
 const APP_SETTINGS_PATH = () => join(app.getPath('userData'), 'app-settings.json')
 
 // ---- Document library ----
-// Opened documents are copied under userData/library and later opens/edits/
-// saves work on that copy; the original file is never rewritten. The setting
+// Opened documents are copied into the library directory and later opens/edits/
+// saves work on that copy; the original file is never rewritten. The directory
+// is configurable (app-settings.json `libraryDir`); the NSIS installer seeds it
+// through a registry value that is adopted once on the next launch. Auto-import
 // defaults to on — the flat app-settings file only records an explicit opt-out.
 
 const LIBRARY_INDEX_PATH = () => join(app.getPath('userData'), 'library.json')
-const LIBRARY_DIR = () => join(app.getPath('userData'), 'library')
+const LIBRARY_REG_KEY = 'HKCU\\Software\\GenOffice'
+
+let cachedLibraryDir: string | null = null
+let libraryDirSeedDone = false
+
+/**
+ * Adopt the installer's registry seed once: copy LibraryDir into
+ * app-settings.json, then delete the value so a later install can seed again.
+ */
+function consumeLibraryDirSeed(): void {
+  try {
+    const query = spawnSync('reg', ['query', LIBRARY_REG_KEY, '/v', 'LibraryDir'], {
+      encoding: 'utf8',
+    })
+    if (query.status === 0) {
+      const match = /LibraryDir\s+REG_SZ\s+(.+)/.exec(query.stdout ?? '')
+      const dir = match?.[1]?.trim()
+      if (dir && isAbsolute(dir)) writeAppSetting(APP_SETTINGS_PATH(), 'libraryDir', dir)
+    }
+    spawnSync('reg', ['delete', LIBRARY_REG_KEY, '/v', 'LibraryDir', '/f'], { stdio: 'ignore' })
+  } catch {
+    // reg missing (non-Windows dev host): nothing to adopt
+  }
+}
+
+/** effective library directory: configured → validated, else the userData default */
+function libraryDir(): string {
+  if (!libraryDirSeedDone) {
+    libraryDirSeedDone = true
+    consumeLibraryDirSeed()
+  }
+  if (cachedLibraryDir) return cachedLibraryDir
+  const configured = readAppSettings(APP_SETTINGS_PATH()).libraryDir
+  const fallback = join(app.getPath('userData'), 'library')
+  let dir = fallback
+  if (typeof configured === 'string' && configured.trim() && isAbsolute(configured.trim())) {
+    dir = resolve(configured.trim())
+  }
+  try {
+    mkdirSync(dir, { recursive: true })
+  } catch (err) {
+    // configured folder not creatable (missing drive, permissions): fall back
+    console.warn(
+      '[library] configured dir unusable, using default:',
+      err instanceof Error ? err.message : err,
+    )
+    dir = fallback
+    mkdirSync(dir, { recursive: true })
+  }
+  cachedLibraryDir = dir
+  return dir
+}
+
+/** resolve a user-supplied directory to the form we store; '' restores the default */
+function normalizedLibraryDirTarget(dir: string): string {
+  const trimmed = dir.trim()
+  if (!trimmed || !isAbsolute(trimmed)) return join(app.getPath('userData'), 'library')
+  return resolve(trimmed)
+}
 
 function libraryAutoImportEnabled(): boolean {
   return readAppSettings(APP_SETTINGS_PATH()).libraryAutoImport !== false
@@ -3155,7 +3217,7 @@ function routeDocumentPath(filePath: string): boolean {
   // run before the de-dup checks below — open tabs already hold library paths,
   // so re-opening an imported file must resolve to the same copy first.
   const targetPath = libraryAutoImportEnabled()
-    ? resolveLibraryPath(filePath, LIBRARY_DIR(), LIBRARY_INDEX_PATH()).path
+    ? resolveLibraryPath(filePath, libraryDir(), LIBRARY_INDEX_PATH()).path
     : filePath
   // a detached editor window already shows this file — focus it, never a second copy
   if (focusDetachedByPath(targetPath)) return true
@@ -3669,7 +3731,7 @@ function registerHomeIpc(): void {
     HOME_CHANNELS.libraryReimport,
     (_event, libPath: unknown): LibraryEntryInfo | null => {
       if (typeof libPath !== 'string') return null
-      const entry = reimportLibraryEntry(LIBRARY_INDEX_PATH(), LIBRARY_DIR(), libPath)
+      const entry = reimportLibraryEntry(LIBRARY_INDEX_PATH(), libraryDir(), libPath)
       if (!entry) return null
       return {
         ...entry,
@@ -3692,6 +3754,35 @@ function registerHomeIpc(): void {
     const enabled = on === true
     writeAppSetting(APP_SETTINGS_PATH(), 'libraryAutoImport', enabled)
     return enabled
+  })
+
+  ipcMain.handle(HOME_CHANNELS.getLibraryDir, (): string => libraryDir())
+
+  ipcMain.handle(
+    HOME_CHANNELS.setLibraryDir,
+    (_event, dir: unknown): { dir: string; moved: number; failed: number } => {
+      const requested = typeof dir === 'string' ? normalizedLibraryDirTarget(dir) : ''
+      const current = libraryDir()
+      if (requested === current) return { dir: current, moved: 0, failed: 0 }
+      // persist first: a crash mid-move still leaves the setting pointing at
+      // the new location, and the next launch resolves + works from there
+      const restoringDefault = requested === normalizedLibraryDirTarget('')
+      if (restoringDefault) writeAppSetting(APP_SETTINGS_PATH(), 'libraryDir', null)
+      else writeAppSetting(APP_SETTINGS_PATH(), 'libraryDir', requested)
+      cachedLibraryDir = null
+      const target = libraryDir()
+      const migration = migrateLibraryDir(LIBRARY_INDEX_PATH(), current, target)
+      console.log(`[library] dir ${current} -> ${target}: moved ${migration.moved}`)
+      return { dir: target, moved: migration.moved, failed: migration.failed }
+    },
+  )
+
+  ipcMain.handle(HOME_CHANNELS.pickLibraryDir, async (_event, current: unknown): Promise<string | null> => {
+    const result = await dialog.showOpenDialog({
+      defaultPath: typeof current === 'string' && current ? current : libraryDir(),
+      properties: ['openDirectory', 'createDirectory'],
+    })
+    return result.canceled || result.filePaths.length === 0 ? null : result.filePaths[0]
   })
 
   ipcMain.handle(HOME_CHANNELS.revealPath, (_event, path: unknown) => {

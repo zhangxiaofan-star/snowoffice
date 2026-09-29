@@ -187,6 +187,20 @@ const homeApi: HomeApi = {
   async setLibraryAutoImport(on) {
     return (await ipcRenderer.invoke(HOME_CHANNELS.setLibraryAutoImport, on)) as boolean
   },
+  async getLibraryDir() {
+    return (await ipcRenderer.invoke(HOME_CHANNELS.getLibraryDir)) as string
+  },
+  async setLibraryDir(dir) {
+    return (await ipcRenderer.invoke(HOME_CHANNELS.setLibraryDir, dir)) as {
+      dir: string
+      moved: number
+      failed: number
+    }
+  },
+  async pickLibraryDir(current) {
+    const r: unknown = await ipcRenderer.invoke(HOME_CHANNELS.pickLibraryDir, current)
+    return typeof r === 'string' ? r : null
+  },
   async revealPath(path) {
     if (typeof path !== 'string' || !path) throw new Error('Invalid path.')
     await ipcRenderer.invoke(HOME_CHANNELS.revealPath, path)

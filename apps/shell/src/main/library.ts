@@ -1,4 +1,13 @@
-import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs'
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmdirSync,
+  rmSync,
+  statSync,
+} from 'node:fs'
 import { basename, extname, isAbsolute, join, resolve } from 'node:path'
 import { writeJsonAtomic } from '@genoffice/electron-utils'
 
@@ -186,4 +195,59 @@ export function statLibraryEntry(entry: LibraryEntry): {
   } catch {
     return { sizeBytes: 0, mtimeMs: 0, missing: true }
   }
+}
+
+export interface LibraryDirMigration {
+  moved: number
+  failed: number
+}
+
+/**
+ * Move every library copy that lives under `fromDir` into `toDir`, rewriting
+ * the recorded libPaths. Copies whose file is already missing stay missing;
+ * entries pointing outside `fromDir` (a previous custom location) are left
+ * alone. The source directory is removed when the move leaves it empty.
+ */
+export function migrateLibraryDir(
+  indexPath: string,
+  fromDir: string,
+  toDir: string,
+  now: number = Date.now(),
+): LibraryDirMigration {
+  mkdirSync(toDir, { recursive: true })
+  const entries = readLibraryEntries(indexPath)
+  let moved = 0
+  let failed = 0
+  for (const entry of entries) {
+    if (!isLibraryPath(entry.libPath, fromDir)) continue
+    if (!existsSync(entry.libPath)) continue
+    const target = uniqueLibPath(toDir, entry.libPath)
+    try {
+      try {
+        renameSync(entry.libPath, target)
+      } catch {
+        // cross-device move: rename fails, copy + delete works
+        copyFileSync(entry.libPath, target)
+        rmSync(entry.libPath)
+      }
+      entry.libPath = target
+      entry.lastOpenedAt = now
+      moved++
+    } catch (err) {
+      console.warn(
+        '[library] migrate failed for',
+        entry.libPath,
+        err instanceof Error ? err.message : err,
+      )
+      failed++
+    }
+  }
+  if (moved + failed > 0) writeEntries(indexPath, entries)
+  try {
+    // rmdirSync only succeeds when empty: leftover files keep the directory
+    rmdirSync(fromDir)
+  } catch {
+    // still has files (failed moves or unrelated content): leave it alone
+  }
+  return { moved, failed }
 }

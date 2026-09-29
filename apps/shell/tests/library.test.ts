@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   findLibraryEntryByLibPath,
+  migrateLibraryDir,
   isLibraryPath,
   readLibraryEntries,
   removeLibraryEntry,
@@ -163,5 +164,52 @@ describe('isLibraryPath', () => {
   it('does not treat a sibling directory with a shared prefix as inside', () => {
     // "library-2" starts with "library" but is not the library itself
     expect(isLibraryPath(join(root, 'library-2', 'a.docx'), libraryDir)).toBe(false)
+  })
+})
+
+describe('migrateLibraryDir', () => {
+  it('moves copies into the new directory and rewrites the recorded paths', () => {
+    mkdirSync(join(root, 'old'), { recursive: true })
+    const oldDir = join(root, 'old')
+    const a = makeOriginal('a.docx', 'A')
+    const b = makeOriginal('b.docx', 'B')
+    resolveLibraryPath(a, oldDir, indexPath)
+    resolveLibraryPath(b, oldDir, indexPath)
+    const result = migrateLibraryDir(indexPath, oldDir, libraryDir)
+    expect(result.moved).toBe(2)
+    expect(result.failed).toBe(0)
+    const entries = readLibraryEntries(indexPath)
+    expect(entries).toHaveLength(2)
+    for (const entry of entries) {
+      expect(entry.libPath.startsWith(libraryDir)).toBe(true)
+      expect(existsSync(entry.libPath)).toBe(true)
+    }
+    // the old directory is gone once emptied
+    expect(existsSync(oldDir)).toBe(false)
+  })
+
+  it('keeps entries that point outside the old directory untouched', () => {
+    const original = makeOriginal('keep.docx', 'K')
+    const outside = resolveLibraryPath(original, libraryDir, indexPath)
+    const oldDir = join(root, 'old')
+    mkdirSync(oldDir, { recursive: true })
+    const other = makeOriginal('other.docx', 'O')
+    resolveLibraryPath(other, oldDir, indexPath)
+    migrateLibraryDir(indexPath, oldDir, join(root, 'new'))
+    const entry = findLibraryEntryByLibPath(indexPath, outside.path)
+    expect(entry?.libPath).toBe(outside.path)
+    expect(existsSync(outside.path)).toBe(true)
+  })
+
+  it('skips copies whose file is already missing without failing', () => {
+    const original = makeOriginal('gone.docx', 'G')
+    const oldDir = join(root, 'old')
+        const first = resolveLibraryPath(original, oldDir, indexPath)
+    rmSync(first.path)
+    const result = migrateLibraryDir(indexPath, oldDir, libraryDir)
+    expect(result.moved).toBe(0)
+    expect(result.failed).toBe(0)
+    const entry = findLibraryEntryByLibPath(indexPath, first.path)
+    expect(entry).toBeDefined()
   })
 })

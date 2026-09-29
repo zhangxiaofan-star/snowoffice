@@ -866,3 +866,10 @@
 .set-intg-path {
   text-align: left;
 }
+
+/* document-library directory row: the current folder renders in a fixed-width face */
+.set-mono {
+  font-family: var(--font-mono, 'Consolas', 'Menlo', monospace);
+  font-size: 12px;
+  word-break: break-all;
+}

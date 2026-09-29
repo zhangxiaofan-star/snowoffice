@@ -221,6 +221,12 @@ export interface HomeApi {
   /** whether opening a file copies it into the library (default on) */
   getLibraryAutoImport(): Promise<boolean>
   setLibraryAutoImport(on: boolean): Promise<boolean>
+  /** current library directory (the folder the copies live in) */
+  getLibraryDir(): Promise<string>
+  /** change it; existing copies are migrated. Empty string restores the default. */
+  setLibraryDir(dir: string): Promise<{ dir: string; moved: number; failed: number }>
+  /** OS directory picker seeded with `current`; null when cancelled */
+  pickLibraryDir(current: string): Promise<string | null>
   /** reveal the file in Finder / Explorer */
   revealPath(path: string): Promise<void>
   /** rename the file on disk (same directory) and update the recent list */
@@ -515,6 +521,9 @@ export const HOME_CHANNELS = {
   libraryRevealOriginal: 'home:library-reveal-original',
   getLibraryAutoImport: 'home:get-library-auto-import',
   setLibraryAutoImport: 'home:set-library-auto-import',
+  getLibraryDir: 'home:get-library-dir',
+  setLibraryDir: 'home:set-library-dir',
+  pickLibraryDir: 'home:pick-library-dir',
   revealPath: 'home:reveal-path',
   renameFile: 'home:rename-file',
   duplicateFile: 'home:duplicate-file',
