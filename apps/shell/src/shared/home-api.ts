@@ -96,6 +96,23 @@ export interface RecentPage {
   totalAll: number
 }
 
+/** a document in the shell's library (the copy the app opens and saves) */
+export interface LibraryEntryInfo {
+  /** the copy under userData/library — the path every editor works on */
+  libPath: string
+  /** where the file was originally opened from */
+  originalPath: string
+  name: string
+  /** lowercased extension without the dot ('docx' | 'xlsx' | ...) */
+  ext: string
+  importedAt: number
+  lastOpenedAt: number
+  mtimeMs: number
+  sizeBytes: number
+  /** the copy failed to stat (deleted by hand, drive gone) */
+  missing?: boolean
+}
+
 /** local file search over names, folders and extracted text */
 export interface FileSearchQuery {
   q: string
@@ -193,6 +210,17 @@ export interface HomeApi {
   newPdf(opts?: NewFileOpts): Promise<void>
   /** drop entries from the recent list (does not touch the files) */
   removeRecent(paths: string[]): Promise<void>
+  /** documents in the library (the app's own copies), newest open first */
+  libraryList(): Promise<LibraryEntryInfo[]>
+  /** forget a library copy (the copy file stays on disk) */
+  libraryRemove(libPath: string): Promise<void>
+  /** overwrite a library copy with its original file's current content */
+  libraryReimport(libPath: string): Promise<LibraryEntryInfo | null>
+  /** reveal the original file (the path the document was imported from) */
+  libraryRevealOriginal(libPath: string): Promise<void>
+  /** whether opening a file copies it into the library (default on) */
+  getLibraryAutoImport(): Promise<boolean>
+  setLibraryAutoImport(on: boolean): Promise<boolean>
   /** reveal the file in Finder / Explorer */
   revealPath(path: string): Promise<void>
   /** rename the file on disk (same directory) and update the recent list */
@@ -481,6 +509,12 @@ export const HOME_CHANNELS = {
   newHtml: 'home:new-html',
   newPdf: 'home:new-pdf',
   removeRecent: 'home:remove-recent',
+  libraryList: 'home:library-list',
+  libraryRemove: 'home:library-remove',
+  libraryReimport: 'home:library-reimport',
+  libraryRevealOriginal: 'home:library-reveal-original',
+  getLibraryAutoImport: 'home:get-library-auto-import',
+  setLibraryAutoImport: 'home:set-library-auto-import',
   revealPath: 'home:reveal-path',
   renameFile: 'home:rename-file',
   duplicateFile: 'home:duplicate-file',

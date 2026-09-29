@@ -16,6 +16,7 @@ import type {
   DefaultAppStatus,
   FolderListing,
   FolderRoot,
+  LibraryEntryInfo,
   MoveResult,
   HomeApi,
   RecentEntry,
@@ -164,6 +165,27 @@ const homeApi: HomeApi = {
   },
   async removeRecent(paths) {
     await ipcRenderer.invoke(HOME_CHANNELS.removeRecent, paths)
+  },
+  async libraryList() {
+    return (await ipcRenderer.invoke(HOME_CHANNELS.libraryList)) as LibraryEntryInfo[]
+  },
+  async libraryRemove(libPath) {
+    await ipcRenderer.invoke(HOME_CHANNELS.libraryRemove, libPath)
+  },
+  async libraryReimport(libPath) {
+    return (await ipcRenderer.invoke(
+      HOME_CHANNELS.libraryReimport,
+      libPath,
+    )) as LibraryEntryInfo | null
+  },
+  async libraryRevealOriginal(libPath) {
+    await ipcRenderer.invoke(HOME_CHANNELS.libraryRevealOriginal, libPath)
+  },
+  async getLibraryAutoImport() {
+    return (await ipcRenderer.invoke(HOME_CHANNELS.getLibraryAutoImport)) as boolean
+  },
+  async setLibraryAutoImport(on) {
+    return (await ipcRenderer.invoke(HOME_CHANNELS.setLibraryAutoImport, on)) as boolean
   },
   async revealPath(path) {
     if (typeof path !== 'string' || !path) throw new Error('Invalid path.')

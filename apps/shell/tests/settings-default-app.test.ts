@@ -39,6 +39,8 @@ async function openGeneral(api: Partial<HomeApi>): Promise<void> {
   window.aiOffice = {
     getTheme: async () => 'system',
     getDefaultSaveDir: async () => '',
+    getLibraryAutoImport: async () => true,
+    setLibraryAutoImport: async (on) => on,
     getAnalyticsEnabled: async () => true,
     setAnalyticsEnabled: async () => true,
     getAiPanelPrefs: async () => ({ fontSize: 'default', spellcheck: true }),

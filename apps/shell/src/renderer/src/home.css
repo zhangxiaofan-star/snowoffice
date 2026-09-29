@@ -683,6 +683,18 @@ body.vib .home {
   text-align: right;
 }
 
+/* document-library list: one extra hint line under the toolbar, and the
+   imported-at column shares the modified column's width */
+.library-hint {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.recent-columns .col-imported {
+  text-align: right;
+}
+
 .recent-list {
   list-style: none;
   margin: 0;

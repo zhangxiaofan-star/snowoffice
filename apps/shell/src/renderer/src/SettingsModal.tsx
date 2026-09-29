@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { AI_ENABLED } from '@genoffice/electron-utils/ai-flag'
 import {
   AI_CUSTOM_FONT_MAX_PX,
   AI_CUSTOM_FONT_MIN_PX,
@@ -139,6 +140,37 @@ function CustomFontSizeInput({
   )
 }
 
+/** General-pane row: whether opening a file copies it into the document library. */
+function LibraryAutoImportRow() {
+  const { t } = useI18n()
+  const [on, setOn] = useState<boolean | null>(null)
+  useEffect(() => {
+    void window.aiOffice.getLibraryAutoImport().then(setOn)
+  }, [])
+  const toggle = () => {
+    const next = !(on ?? true)
+    setOn(next)
+    void window.aiOffice.setLibraryAutoImport(next).then((stored) => setOn(stored))
+  }
+  return (
+    <div className="set-field">
+      <div className="set-field-text">
+        <div className="set-field-stack">
+          <div className="set-field-label">{t('setLibraryAutoImport')}</div>
+          <div className="set-field-desc">{t('setLibraryAutoImportDesc')}</div>
+        </div>
+      </div>
+      <button
+        className="set-switch"
+        role="switch"
+        aria-checked={on ?? true}
+        aria-label={t('setLibraryAutoImport')}
+        onClick={toggle}
+      />
+    </div>
+  )
+}
+
 export type SectionId = 'account' | 'aiModel' | 'aiMedia' | 'general' | 'integrations' | 'about'
 
 const SECTIONS: readonly { id: SectionId; labelKey: StringKey }[] = [
@@ -149,6 +181,13 @@ const SECTIONS: readonly { id: SectionId; labelKey: StringKey }[] = [
   { id: 'integrations', labelKey: 'setSecIntegrations' },
   { id: 'about', labelKey: 'setSecAbout' },
 ]
+
+// The AI provider/media panes vanish from the nav when the AI feature set is
+// disabled (they hold no other settings); deep links targeting them fall back
+// to the account section.
+const VISIBLE_SECTIONS = AI_ENABLED
+  ? SECTIONS
+  : SECTIONS.filter((s) => s.id !== 'aiModel' && s.id !== 'aiMedia')
 
 function SectionIcon({ id }: { id: SectionId }) {
   if (id === 'aiModel') {
@@ -1245,7 +1284,11 @@ export function SettingsModal({
   target,
 }: SettingsModalProps) {
   const { lang, setLang, t } = useI18n()
-  const [section, setSection] = useState<SectionId>(target?.section ?? 'account')
+  const [section, setSection] = useState<SectionId>(
+    target && !VISIBLE_SECTIONS.some((s) => s.id === target.section)
+      ? 'account'
+      : (target?.section ?? 'account'),
+  )
   const [theme, setTheme] = useState<UiTheme>('system')
   const [saveDir, setSaveDir] = useState('')
   const [analyticsOn, setAnalyticsOn] = useState(true)
@@ -1377,7 +1420,7 @@ export function SettingsModal({
         </div>
         <div className="set-body">
           <nav className="set-nav" aria-label={t('settings')}>
-            {SECTIONS.map((s) => (
+            {VISIBLE_SECTIONS.map((s) => (
               <button
                 key={s.id}
                 className={`set-nav-item${section === s.id ? ' active' : ''}`}
@@ -1441,8 +1484,8 @@ export function SettingsModal({
                 </div>
               </>
             )}
-            {section === 'aiModel' && <AiModelPane t={t} />}
-            {section === 'aiMedia' && (
+            {AI_ENABLED && section === 'aiModel' && <AiModelPane t={t} />}
+            {AI_ENABLED && section === 'aiMedia' && (
               <AiMediaPane
                 t={t}
                 onFileSearchChange={onFileSearchChange}
@@ -1479,66 +1522,71 @@ export function SettingsModal({
                     onPick={(v) => applyTheme(v as UiTheme)}
                   />
                 </div>
-                <div className="set-field">
-                  <div className="set-field-text">
-                    <label className="set-field-label">{t('setAiPanelSide')}</label>
-                  </div>
-                  <Dropdown
-                    className="set-dd"
-                    value={aiPrefs.side}
-                    ariaLabel={t('setAiPanelSide')}
-                    options={[
-                      { value: 'left', label: t('aiPanelSideLeft') },
-                      { value: 'right', label: t('aiPanelSideRight') },
-                    ]}
-                    onPick={(side) => updateAiPrefs({ side: side as AiPanelSide })}
-                  />
-                </div>
-                <div className="set-field">
-                  <div className="set-field-text">
-                    <label className="set-field-label">{t('setAiFontSize')}</label>
-                  </div>
-                  {aiPrefs.fontSize === 'custom' && (
-                    <CustomFontSizeInput
-                      value={aiPrefs.customFontSize}
-                      label={t('aiFontSizeCustom')}
-                      onCommit={(px) => updateAiPrefs({ customFontSize: px })}
-                    />
-                  )}
-                  <Dropdown
-                    className="set-dd"
-                    value={aiPrefs.fontSize}
-                    ariaLabel={t('setAiFontSize')}
-                    options={AI_FONT_SIZE_OPTIONS.map((opt) => ({
-                      value: opt.value,
-                      label: t(opt.labelKey),
-                    }))}
-                    onPick={(v) => {
-                      const fontSize = v as AiFontSize
-                      // start the custom size from the preset being left so nothing jumps
-                      updateAiPrefs(
-                        fontSize === 'custom' && aiPrefs.fontSize !== 'custom'
-                          ? { fontSize, customFontSize: aiPanelFontPx(aiPrefs) }
-                          : { fontSize },
-                      )
-                    }}
-                  />
-                </div>
-                <div className="set-field">
-                  <div className="set-field-text">
-                    <div className="set-field-stack">
-                      <div className="set-field-label">{t('setAiSpellcheck')}</div>
-                      <div className="set-field-desc">{t('setAiSpellcheckDesc')}</div>
+                <LibraryAutoImportRow />
+                {AI_ENABLED && (
+                  <>
+                    <div className="set-field">
+                      <div className="set-field-text">
+                        <label className="set-field-label">{t('setAiPanelSide')}</label>
+                      </div>
+                      <Dropdown
+                        className="set-dd"
+                        value={aiPrefs.side}
+                        ariaLabel={t('setAiPanelSide')}
+                        options={[
+                          { value: 'left', label: t('aiPanelSideLeft') },
+                          { value: 'right', label: t('aiPanelSideRight') },
+                        ]}
+                        onPick={(side) => updateAiPrefs({ side: side as AiPanelSide })}
+                      />
                     </div>
-                  </div>
-                  <button
-                    className="set-switch"
-                    role="switch"
-                    aria-checked={aiPrefs.spellcheck}
-                    aria-label={t('setAiSpellcheck')}
-                    onClick={() => updateAiPrefs({ spellcheck: !aiPrefs.spellcheck })}
-                  />
-                </div>
+                    <div className="set-field">
+                      <div className="set-field-text">
+                        <label className="set-field-label">{t('setAiFontSize')}</label>
+                      </div>
+                      {aiPrefs.fontSize === 'custom' && (
+                        <CustomFontSizeInput
+                          value={aiPrefs.customFontSize}
+                          label={t('aiFontSizeCustom')}
+                          onCommit={(px) => updateAiPrefs({ customFontSize: px })}
+                        />
+                      )}
+                      <Dropdown
+                        className="set-dd"
+                        value={aiPrefs.fontSize}
+                        ariaLabel={t('setAiFontSize')}
+                        options={AI_FONT_SIZE_OPTIONS.map((opt) => ({
+                          value: opt.value,
+                          label: t(opt.labelKey),
+                        }))}
+                        onPick={(v) => {
+                          const fontSize = v as AiFontSize
+                          // start the custom size from the preset being left so nothing jumps
+                          updateAiPrefs(
+                            fontSize === 'custom' && aiPrefs.fontSize !== 'custom'
+                              ? { fontSize, customFontSize: aiPanelFontPx(aiPrefs) }
+                              : { fontSize },
+                          )
+                        }}
+                      />
+                    </div>
+                    <div className="set-field">
+                      <div className="set-field-text">
+                        <div className="set-field-stack">
+                          <div className="set-field-label">{t('setAiSpellcheck')}</div>
+                          <div className="set-field-desc">{t('setAiSpellcheckDesc')}</div>
+                        </div>
+                      </div>
+                      <button
+                        className="set-switch"
+                        role="switch"
+                        aria-checked={aiPrefs.spellcheck}
+                        aria-label={t('setAiSpellcheck')}
+                        onClick={() => updateAiPrefs({ spellcheck: !aiPrefs.spellcheck })}
+                      />
+                    </div>
+                  </>
+                )}
                 {defaultApp && defaultApp.state !== 'unsupported' && (
                   <div className="set-field">
                     <div className="set-field-text">

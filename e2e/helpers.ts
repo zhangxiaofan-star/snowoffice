@@ -46,15 +46,17 @@ export async function launchShell(options: LaunchOptions): Promise<LaunchedApp> 
     throw new Error(`Missing build output at ${SHELL_MAIN} — run \`npm run build:all\` first`)
   }
   const userDataDir = options.userDataDir ?? (await mkdtemp(join(tmpdir(), 'genoffice-e2e-')))
-  if (options.onboardingSeen || options.settings) {
-    await writeFile(
-      join(userDataDir, 'app-settings.json'),
-      JSON.stringify({
-        ...(options.onboardingSeen ? { onboardingSeen: true } : {}),
-        ...options.settings,
-      }),
-    )
-  }
+  // Most of the suite pins the classic in-place save semantics (edits land in
+  // the file at the path that was opened), so the document library defaults to
+  // OFF here; specs covering the library opt in with libraryAutoImport: true.
+  const settings = { libraryAutoImport: false, ...options.settings }
+  await writeFile(
+    join(userDataDir, 'app-settings.json'),
+    JSON.stringify({
+      ...(options.onboardingSeen ? { onboardingSeen: true } : {}),
+      ...settings,
+    }),
+  )
   const require = createRequire(join(SHELL_DIR, 'package.json'))
   const executablePath = require('electron') as unknown as string
   // ELECTRON_RUN_AS_NODE (set by VS Code/CI hosts) would boot Electron as

@@ -71,6 +71,14 @@ import {
   writeAppSettings,
   writeAppSettingThen,
 } from './app-settings'
+import {
+  findLibraryEntryByLibPath,
+  readLibraryEntries,
+  removeLibraryEntry,
+  resolveLibraryPath,
+  reimportLibraryEntry,
+  statLibraryEntry,
+} from './library'
 import { OPEN_DOCUMENTS_FILE, clearOpenDocuments, publishOpenDocuments } from './open-documents'
 import { startControlServer, type ControlServer } from './control-server'
 import { controlHandler } from './control-handlers'
@@ -257,6 +265,7 @@ import type {
   AutoSaveDefault,
   FolderListing,
   FolderRoot,
+  LibraryEntryInfo,
   MoveConflictPolicy,
   MoveResult,
   NewFileOpts,
@@ -451,6 +460,19 @@ registerPrivilegedSchemes()
 // same file when they pick up i18n later. GENOFFICE_LANG overrides for tests.
 
 const APP_SETTINGS_PATH = () => join(app.getPath('userData'), 'app-settings.json')
+
+// ---- Document library ----
+// Opened documents are copied under userData/library and later opens/edits/
+// saves work on that copy; the original file is never rewritten. The setting
+// defaults to on — the flat app-settings file only records an explicit opt-out.
+
+const LIBRARY_INDEX_PATH = () => join(app.getPath('userData'), 'library.json')
+const LIBRARY_DIR = () => join(app.getPath('userData'), 'library')
+
+function libraryAutoImportEnabled(): boolean {
+  return readAppSettings(APP_SETTINGS_PATH()).libraryAutoImport !== false
+}
+
 const OPEN_DOCUMENTS_PATH = () => join(app.getPath('userData'), OPEN_DOCUMENTS_FILE)
 /** only the instance holding the single-instance lock may write or remove the registry */
 let ownsOpenDocumentsRegistry = false
@@ -3128,60 +3150,67 @@ function openGeneratedDocument(filePath: string): boolean {
 
 function routeDocumentPath(filePath: string): boolean {
   if (!existsSync(filePath)) return false
+  // Document library: once auto-import is on, the shell works on its own copy
+  // under userData/library and the original file is never rewritten. This must
+  // run before the de-dup checks below — open tabs already hold library paths,
+  // so re-opening an imported file must resolve to the same copy first.
+  const targetPath = libraryAutoImportEnabled()
+    ? resolveLibraryPath(filePath, LIBRARY_DIR(), LIBRARY_INDEX_PATH()).path
+    : filePath
   // a detached editor window already shows this file — focus it, never a second copy
-  if (focusDetachedByPath(filePath)) return true
+  if (focusDetachedByPath(targetPath)) return true
   if (!tabManager) return false
-  if (DOCX_RE.test(filePath)) {
-    recordRecentFile(filePath)
-    const existing = tabManager.findDocsTabByPath(filePath)
+  if (DOCX_RE.test(targetPath)) {
+    recordRecentFile(targetPath)
+    const existing = tabManager.findDocsTabByPath(targetPath)
     if (existing) tabManager.activateTab(existing)
-    else tabManager.openDocsTab(filePath)
+    else tabManager.openDocsTab(targetPath)
     return true
   }
-  if (XLSX_RE.test(filePath)) {
-    recordRecentFile(filePath)
-    const existing = tabManager.findSheetsTabByPath(filePath)
+  if (XLSX_RE.test(targetPath)) {
+    recordRecentFile(targetPath)
+    const existing = tabManager.findSheetsTabByPath(targetPath)
     if (existing) {
       tabManager.activateTab(existing)
     } else {
-      tabManager.openSheetsTab(filePath)
+      tabManager.openSheetsTab(targetPath)
       startQueuedWorkbookNudge()
     }
     return true
   }
-  if (PPTX_RE.test(filePath)) {
-    recordRecentFile(filePath)
-    const existing = tabManager.findSlidesTabByPath(filePath)
+  if (PPTX_RE.test(targetPath)) {
+    recordRecentFile(targetPath)
+    const existing = tabManager.findSlidesTabByPath(targetPath)
     if (existing) {
       tabManager.activateTab(existing)
     } else {
       // For a new tab the path goes through the pending queue; the renderer consumes it after mounting
-      tabManager.openSlidesTab(filePath)
+      tabManager.openSlidesTab(targetPath)
     }
     return true
   }
-  if (PDF_RE.test(filePath)) {
-    recordRecentFile(filePath)
-    const existing = tabManager.findPdfTabByPath(filePath)
+  if (PDF_RE.test(targetPath)) {
+    recordRecentFile(targetPath)
+    const existing = tabManager.findPdfTabByPath(targetPath)
     if (existing) tabManager.activateTab(existing)
-    else tabManager.openPdfTab(filePath)
+    else tabManager.openPdfTab(targetPath)
     return true
   }
-  if (MD_RE.test(filePath)) {
-    recordRecentFile(filePath)
-    const existing = tabManager.findMarkdownTabByPath(filePath)
+  if (MD_RE.test(targetPath)) {
+    recordRecentFile(targetPath)
+    const existing = tabManager.findMarkdownTabByPath(targetPath)
     if (existing) tabManager.activateTab(existing)
-    else tabManager.openMarkdownTab(filePath)
+    else tabManager.openMarkdownTab(targetPath)
     return true
   }
-  if (HTML_RE.test(filePath)) {
-    recordRecentFile(filePath)
-    const existing = tabManager.findHtmlTabByPath(filePath)
+  if (HTML_RE.test(targetPath)) {
+    recordRecentFile(targetPath)
+    const existing = tabManager.findHtmlTabByPath(targetPath)
     if (existing) tabManager.activateTab(existing)
-    else tabManager.openHtmlTab(filePath)
+    else tabManager.openHtmlTab(targetPath)
     return true
   }
-  notifyUnsupportedFile(filePath)
+  notifyUnsupportedFile(targetPath)
   return false
 }
 
@@ -3619,6 +3648,50 @@ function registerHomeIpc(): void {
     // an unavailable entry's star must go with it, or the Starred view keeps
     // a dead dimmed row the recents list no longer shows
     removeStarredFiles(list.filter((p) => !existsSync(p)))
+  })
+
+  ipcMain.handle(HOME_CHANNELS.libraryList, (): LibraryEntryInfo[] =>
+    readLibraryEntries(LIBRARY_INDEX_PATH())
+      .map((entry) => ({
+        ...entry,
+        name: basename(entry.libPath),
+        ext: extname(entry.libPath).slice(1).toLowerCase(),
+        ...statLibraryEntry(entry),
+      }))
+      .sort((a, b) => b.lastOpenedAt - a.lastOpenedAt),
+  )
+
+  ipcMain.handle(HOME_CHANNELS.libraryRemove, (_event, libPath: unknown) => {
+    if (typeof libPath === 'string') removeLibraryEntry(LIBRARY_INDEX_PATH(), libPath)
+  })
+
+  ipcMain.handle(
+    HOME_CHANNELS.libraryReimport,
+    (_event, libPath: unknown): LibraryEntryInfo | null => {
+      if (typeof libPath !== 'string') return null
+      const entry = reimportLibraryEntry(LIBRARY_INDEX_PATH(), LIBRARY_DIR(), libPath)
+      if (!entry) return null
+      return {
+        ...entry,
+        name: basename(entry.libPath),
+        ext: extname(entry.libPath).slice(1).toLowerCase(),
+        ...statLibraryEntry(entry),
+      }
+    },
+  )
+
+  ipcMain.handle(HOME_CHANNELS.libraryRevealOriginal, (_event, libPath: unknown) => {
+    if (typeof libPath !== 'string') return
+    const entry = findLibraryEntryByLibPath(LIBRARY_INDEX_PATH(), libPath)
+    if (entry && existsSync(entry.originalPath)) shell.showItemInFolder(entry.originalPath)
+  })
+
+  ipcMain.handle(HOME_CHANNELS.getLibraryAutoImport, (): boolean => libraryAutoImportEnabled())
+
+  ipcMain.handle(HOME_CHANNELS.setLibraryAutoImport, (_event, on: unknown): boolean => {
+    const enabled = on === true
+    writeAppSetting(APP_SETTINGS_PATH(), 'libraryAutoImport', enabled)
+    return enabled
   })
 
   ipcMain.handle(HOME_CHANNELS.revealPath, (_event, path: unknown) => {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DragEvent as ReactDragEvent, ReactElement } from 'react'
+import { AI_ENABLED } from '@genoffice/electron-utils/ai-flag'
 import logoLockup from './assets/genoffice-logo.svg'
 import iconDocx from './assets/file-docx.svg'
 import iconXlsx from './assets/file-xlsx.svg'
@@ -15,6 +16,7 @@ import type {
   FolderListing,
   FolderRoot,
   HomeApi,
+  LibraryEntryInfo,
   MoveConflictPolicy,
   RecentEntry,
   FileSearchHit,
@@ -1020,6 +1022,109 @@ const CLOUD_KIND_EXT: Record<string, string> = { docs: 'docx', sheets: 'xlsx', s
 /** rows revealed per "load more" step; purely client-side over the local snapshot */
 const CLOUD_REVEAL_STEP = 100
 
+/**
+ * The document library: the app's own copies of opened files. Rows open the
+ * library copy (the path every editor saves to); the actions reach back to the
+ * original file instead — reveal where it came from, re-import its current
+ * content over the copy, or drop the record.
+ */
+function LibraryView() {
+  const i18n = useI18n()
+  const { t, lang } = i18n
+  const [entries, setEntries] = useState<LibraryEntryInfo[] | null>(null)
+
+  const reload = () => {
+    void window.aiOffice.libraryList().then(setEntries)
+  }
+  useEffect(() => {
+    void window.aiOffice.libraryList().then(setEntries)
+  }, [])
+
+  const remove = (libPath: string) => {
+    void window.aiOffice.libraryRemove(libPath).then(reload)
+  }
+  const reimport = (libPath: string) => {
+    void window.aiOffice.libraryReimport(libPath).then(reload)
+  }
+
+  return (
+    <main className="content">
+      <section className="recents" aria-label={t('navLibrary')}>
+        <div className="recents-toolbar">
+          <div className="recents-heading">
+            <span className="section-label">{t('navLibrary')}</span>
+            <span className="file-count">
+              {entries ? fileCountLabel(entries.length, lang, t) : ''}
+            </span>
+          </div>
+        </div>
+        <p className="library-hint">{t('libraryHint')}</p>
+        {entries === null ? null : entries.length === 0 ? (
+          <p className="empty-hint">{t('libraryEmpty')}</p>
+        ) : (
+          <div className="recent-table">
+            <div className="recent-columns">
+              <span className="col-name">{t('colName')}</span>
+              <span className="col-path">{t('libraryOriginalCol')}</span>
+              <span className="col-imported">{t('libraryImportedCol')}</span>
+              <span />
+            </div>
+            <ul className="recent-list">
+              {entries.map((entry) => (
+                <li className="recent-row" key={entry.libPath}>
+                  <div
+                    className={`recent-item${entry.missing ? ' missing' : ''}`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => {
+                      if (!entry.missing) void window.aiOffice.openPath(entry.libPath)
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' && event.target === event.currentTarget) {
+                        if (!entry.missing) void window.aiOffice.openPath(entry.libPath)
+                      }
+                    }}
+                  >
+                    <span className="recent-icon">
+                      <FileBadge ext={entry.ext} size={24} />
+                    </span>
+                    <span className="recent-name">{entry.name}</span>
+                    <span className="recent-path" title={entry.originalPath}>
+                      {entry.originalPath}
+                    </span>
+                    <span className="recent-time">
+                      {entry.missing ? '—' : formatModified(entry.importedAt, i18n)}
+                    </span>
+                    <span className="recent-size">{formatSize(entry.sizeBytes)}</span>
+                    <span className="recent-actions" onClick={(event) => event.stopPropagation()}>
+                      <button
+                        className="selection-action"
+                        onClick={() => void window.aiOffice.libraryRevealOriginal(entry.libPath)}
+                      >
+                        {t('libraryRevealOriginal')}
+                      </button>
+                      <button
+                        className="selection-action"
+                        disabled={entry.missing}
+                        onClick={() => reimport(entry.libPath)}
+                      >
+                        {t('libraryReimport')}
+                      </button>
+                      <button className="selection-action" onClick={() => remove(entry.libPath)}>
+                        {t('libraryRemove')}
+                      </button>
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
+    </main>
+  )
+}
+
 function CloudProjectsView() {
   const i18n = useI18n()
   const { t } = i18n
@@ -1406,6 +1511,8 @@ export function Home() {
   const [view, setView] = useState<'recent' | 'starred'>('recent')
   // Genspark web projects take over the content area (like a selected folder)
   const [cloudMode, setCloudMode] = useState(false)
+  // the document library (the app's own copies) takes over the content area too
+  const [libraryMode, setLibraryMode] = useState(false)
   const [filter, setFilter] = useState('all')
   // ── File search (names + indexed content); active while the box has text ──
   const [searchQuery, setSearchQuery] = useState('')
@@ -1821,6 +1928,7 @@ export function Home() {
     setView(next)
     setSelectedFolder(null)
     setCloudMode(false)
+    setLibraryMode(false)
     setSelected(new Set())
     setRowMenu(null)
   }
@@ -1834,6 +1942,7 @@ export function Home() {
   const selectFolder = (dir: string) => {
     setSelectedFolder(dir)
     setCloudMode(false)
+    setLibraryMode(false)
     setSelected(new Set())
     setRowMenu(null)
     setFolderMenu(null)
@@ -2127,7 +2236,7 @@ export function Home() {
             <span className="quick-text">
               <span className="quick-title-row">
                 <span className="quick-title">{item.title}</span>
-                <span className="ai-chip">AI</span>
+                {AI_ENABLED && <span className="ai-chip">AI</span>}
               </span>
               <span className="quick-sub">{item.sub}</span>
             </span>
@@ -3034,7 +3143,7 @@ export function Home() {
             )}
             <div className="file-search-group">
               {renderSearchBox()}
-              {renderSearchSettingsButton()}
+              {AI_ENABLED && renderSearchSettingsButton()}
             </div>
             {searchActive ? (
               renderSearchHeading()
@@ -3153,7 +3262,7 @@ export function Home() {
             )}
             <div className="file-search-group">
               {renderSearchBox()}
-              {renderSearchSettingsButton()}
+              {AI_ENABLED && renderSearchSettingsButton()}
             </div>
             {searchActive ? (
               renderSearchHeading()
@@ -3244,7 +3353,7 @@ export function Home() {
             <span className="nav-count">{navCounts.recent}</span>
           </button>
           <button
-            className={`nav-item${view === 'starred' && !selectedFolder && !cloudMode ? ' active' : ''}`}
+            className={`nav-item${view === 'starred' && !selectedFolder && !cloudMode && !libraryMode ? ' active' : ''}`}
             onClick={() => changeView('starred')}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -3258,11 +3367,32 @@ export function Home() {
             <span className="nav-label">{t('navStarred')}</span>
             <span className="nav-count">{navCounts.starred}</span>
           </button>
+          <button
+            className={`nav-item${libraryMode && !selectedFolder && !cloudMode ? ' active' : ''}`}
+            onClick={() => {
+              setLibraryMode(true)
+              setSelectedFolder(null)
+              setCloudMode(false)
+              setSelected(new Set())
+              setRowMenu(null)
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path
+                d="M2.5 3A1.5 1.5 0 0 1 4 1.5h3.2c.6 0 1.15.35 1.4.9l.5 1.1h3.4A1.5 1.5 0 0 1 14 5v8a1.5 1.5 0 0 1-1.5 1.5h-8.5A1.5 1.5 0 0 1 2.5 13V3z"
+                stroke="currentColor"
+                strokeWidth="1.3"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span className="nav-label">{t('navLibrary')}</span>
+          </button>
           {loggedIn && (
             <button
               className={`nav-item${cloudMode && !selectedFolder ? ' active' : ''}`}
               onClick={() => {
                 setCloudMode(true)
+                setLibraryMode(false)
                 setSelectedFolder(null)
                 setSelected(new Set())
                 setRowMenu(null)
@@ -3308,6 +3438,8 @@ export function Home() {
         renderFolderContent()
       ) : cloudMode ? (
         <CloudProjectsView />
+      ) : libraryMode ? (
+        <LibraryView />
       ) : (
         renderGlobalContent()
       )}

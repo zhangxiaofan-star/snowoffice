@@ -44,6 +44,8 @@ describe('Settings analytics consent', () => {
     window.aiOffice = {
       getTheme: async () => 'system',
       getDefaultSaveDir: async () => '',
+      getLibraryAutoImport: async () => true,
+      setLibraryAutoImport: async (on) => on,
       getAnalyticsEnabled: async () => true,
       setAnalyticsEnabled: persist,
       getAiPanelPrefs: async () => ({ fontSize: 'default', spellcheck: true }),
@@ -101,6 +103,8 @@ describe('Settings AutoSave default', () => {
     window.aiOffice = {
       getTheme: async () => 'system',
       getDefaultSaveDir: async () => '',
+      getLibraryAutoImport: async () => true,
+      setLibraryAutoImport: async (on) => on,
       getAnalyticsEnabled: async () => true,
       setAnalyticsEnabled: async () => true,
       getAutoSaveDefault: async () => ({ on: true, updatedAt: 1 }),
