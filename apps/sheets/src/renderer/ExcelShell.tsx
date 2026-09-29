@@ -431,6 +431,7 @@ export function ExcelShell({
   const [showSortDialog, setShowSortDialog] = useState(false)
   const [showDedupeDialog, setShowDedupeDialog] = useState(false)
   const [showFormulaFavorites, setShowFormulaFavorites] = useState(false)
+  const [showAffixDialog, setShowAffixDialog] = useState(false)
   const [showNameManager, setShowNameManager] = useState(false)
   const [showPivotDialog, setShowPivotDialog] = useState(false)
   const [pivotEditSeed, setPivotEditSeed] = useState<PivotEditSeed | null>(null)
@@ -481,6 +482,7 @@ export function ExcelShell({
     else if (command === 'sort-custom-open') setShowSortDialog(true)
     else if (command === 'remove-duplicates-open') setShowDedupeDialog(true)
     else if (command === 'formula-favorites-open') setShowFormulaFavorites(true)
+    else if (command === 'colclean-affix-open') setShowAffixDialog(true)
     else if (command === 'name-manager-open') setShowNameManager(true)
     else if (command === 'pivot-open') setShowPivotDialog(true)
     else if (command === 'pivot-edit') setPivotEditSeed(onGetPivotEditSeed())
@@ -904,6 +906,9 @@ export function ExcelShell({
       {showFormulaFavorites && (
         <FormulaFavoritesDialog onCommand={onCommand} onClose={() => setShowFormulaFavorites(false)} />
       )}
+      {showAffixDialog && (
+        <AffixDialog onCommand={onCommand} onClose={() => setShowAffixDialog(false)} />
+      )}
       {showNameManager &&
         (() => {
           const data = onGetDefinedNames()
@@ -1096,6 +1101,51 @@ function SortDialog({
           >
             {t('appOk')}
           </button>
+        </footer>
+      </div>
+    </div>
+  )
+}
+
+function AffixDialog({
+  onCommand,
+  onClose,
+}: {
+  readonly onCommand: (command: string) => void
+  readonly onClose: () => void
+}): React.JSX.Element {
+  const { t } = useI18n()
+  const [prefix, setPrefix] = useState('')
+  const [suffix, setSuffix] = useState('')
+  const modal = useModalDialog(onClose)
+  const apply = () => {
+    const encode = (text: string) => encodeURIComponent(text)
+    onCommand(`colclean-affix:${encode(prefix)}:${encode(suffix)}`)
+    onClose()
+  }
+  return (
+    <div className="dialog-backdrop" onClick={onClose}>
+      <div
+        className="format-cells-dialog"
+        role="dialog"
+        {...modal}
+        aria-label={t('appColCleanAffixTitle')}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header>{t('appColCleanAffixTitle')}</header>
+        <div className="dialog-body">
+          <label className="sort-header-check">
+            {t('appColCleanPrefix')}
+            <input value={prefix} onChange={(event) => setPrefix(event.target.value)} />
+          </label>
+          <label className="sort-header-check">
+            {t('appColCleanSuffix')}
+            <input value={suffix} onChange={(event) => setSuffix(event.target.value)} />
+          </label>
+        </div>
+        <footer className="dialog-actions">
+          <button onClick={onClose}>{t('appCancel')}</button>
+          <button className="primary" onClick={apply}>{t('appColCleanApply')}</button>
         </footer>
       </div>
     </div>
@@ -2365,6 +2415,11 @@ function Ribbon({
             symbol="↧"
             onClick={() => onCommand('selection-export')}
           />
+          {largeMenu(t('appColClean'), '✧', t('appColCleanTitle'), [
+            { value: 'colclean-fill-down', label: t('appColCleanFillDown') },
+            { value: 'colclean-to-number', label: t('appColCleanToNumber') },
+            { value: 'colclean-affix-open', label: t('appColCleanAffix') },
+          ])}
           <RibbonButton
             large
             label={t('appRemoveDuplicates')}

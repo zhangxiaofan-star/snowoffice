@@ -375,6 +375,115 @@ export function handleRibbonCommand(ctx: RibbonCommandContext, command: string):
   // Read-only-safe commands work on imported workbooks too.
   const worksheet = runtime.univerAPI.getActiveWorkbook()?.getActiveSheet()
   switch (command) {
+    case 'colclean-fill-down':
+    case 'colclean-to-number': {
+      if (!worksheet) return
+      const workbook = runtime.univerAPI.getActiveWorkbook()
+      const range = workbook?.getActiveRange()
+      if (!range || range.getHeight() < 2) {
+        ctx.setMessage(t('appColCleanNeedRows'))
+        return
+      }
+      // Same streamed-load gate as dedupe: never write into rows the user
+      // has not seen.
+      const state = ctx.lazyWorkbookRef.current
+      const sheetId = worksheet.getSheetId()
+      if (
+        state &&
+        !state.editJournal.sheets.added.has(sheetId) &&
+        (!state.formulaMode || !state.flags.preloadComplete)
+      ) {
+        ctx.setMessage(t('appDedupeNeedsFullLoad'))
+        return
+      }
+      const values = range.getValues() as (string | number | boolean | null)[][]
+      const startRow = range.getRow()
+      const startColumn = range.getColumn()
+      let touched = 0
+      for (let c = 0; c < range.getWidth(); c++) {
+        let last: string | number | boolean | null = null
+        for (let r = 0; r < range.getHeight(); r++) {
+          const value = values[r]?.[c] ?? null
+          if (command === 'colclean-fill-down') {
+            if ((value === null || value === '') && last !== null) {
+              const cell = worksheet.getRange(startRow + r, startColumn + c)
+              if (!cell.getFormula()) {
+                cell.setValues([[last]] as unknown as ICellData[][])
+                touched++
+              }
+            } else if (value !== null && value !== '') {
+              last = value
+            }
+          } else {
+            // text-to-number: plain numeric strings only, never formulas
+            if (typeof value === 'string') {
+              const trimmed = value.trim()
+              if (trimmed !== '' && !Number.isNaN(Number(trimmed))) {
+                const cell = worksheet.getRange(startRow + r, startColumn + c)
+                if (!cell.getFormula()) {
+                  cell.setValues([[Number(trimmed)]] as unknown as ICellData[][])
+                  touched++
+                }
+              }
+            }
+          }
+        }
+      }
+      ctx.setMessage(
+        touched === 0
+          ? t('appColCleanNothing')
+          : t('appColCleanTouched', { count: touched }),
+      )
+      return
+    }
+    case 'colclean-affix': {
+      if (!worksheet) return
+      const rest = command.slice('colclean-affix:'.length)
+      const sepAt = rest.indexOf(':')
+      if (sepAt < 0) return
+      let prefix = ''
+      let suffix = ''
+      try {
+        prefix = decodeURIComponent(rest.slice(0, sepAt))
+        suffix = decodeURIComponent(rest.slice(sepAt + 1))
+      } catch {
+        return
+      }
+      if (prefix === '' && suffix === '') return
+      const workbook = runtime.univerAPI.getActiveWorkbook()
+      const range = workbook?.getActiveRange()
+      if (!range) return
+      const state = ctx.lazyWorkbookRef.current
+      const sheetId = worksheet.getSheetId()
+      if (
+        state &&
+        !state.editJournal.sheets.added.has(sheetId) &&
+        (!state.formulaMode || !state.flags.preloadComplete)
+      ) {
+        ctx.setMessage(t('appDedupeNeedsFullLoad'))
+        return
+      }
+      const values = range.getValues() as (string | number | boolean | null)[][]
+      const startRow = range.getRow()
+      const startColumn = range.getColumn()
+      let touched = 0
+      for (let r = 0; r < range.getHeight(); r++) {
+        for (let c = 0; c < range.getWidth(); c++) {
+          const value = values[r]?.[c]
+          if (value === null || value === undefined || value === '') continue
+          const cell = worksheet.getRange(startRow + r, startColumn + c)
+          if (cell.getFormula()) continue
+          cell.setValues([[prefix + String(value) + suffix]] as unknown as ICellData[][])
+          touched++
+        }
+      }
+      ctx.setMessage(
+        touched === 0
+          ? t('appColCleanNothing')
+          : t('appColCleanTouched', { count: touched }),
+      )
+      return
+    }
     case 'find':
       void runtime.univerAPI.executeCommand('ui.operation.open-find-dialog')
       return
