@@ -45,6 +45,7 @@
  * (package.bat) is gone.
  */
 
+import readline from 'node:readline'
 import { spawn, spawnSync } from 'node:child_process'
 import {
   appendFileSync,
@@ -97,6 +98,7 @@ const flags = new Set(args.filter((a) => a.startsWith('--')))
 const skipBuild = flags.has('--skip-build')
 const forceSidecar = flags.has('--sidecar')
 const skipSmoke = flags.has('--skip-smoke')
+const release = flags.has('--release')
 
 // ---- 0. run log ---------------------------------------------------------------
 
@@ -485,9 +487,77 @@ async function main() {
     }
   }
 
+  if (release) {
+    await publishRelease(shellPkg.version, installer, join(RELEASE, `${shellPkg.version}.blockmap`))
+  }
   console.log(
     `\n=== DONE ===\nVersion:   ${shellPkg.version}\nInstaller: ${installer}\nUnpacked:  ${UNPACKED}\nLog:       ${LOG_PATH}`,
   )
 }
 
 main()
+
+/** prompt the user for multi-line release notes (an empty line finishes) */
+async function askReleaseNotes() {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+    console.log('')
+    console.log('填写发布说明（每行一条；输入空行结束）：')
+    const lines = []
+    rl.on('line', (line) => {
+      if (line.trim() === '') {
+        rl.close()
+        return
+      }
+      lines.push(line)
+    })
+    rl.on('close', () => resolve(lines.join('\n')))
+  })
+}
+
+/** tag vX.Y.Z, push the tag, and create a GitHub release with the installer */
+async function publishRelease(version, installer, blockmap) {
+  const tag = `v${version}`
+  const notesFile = join(RELEASE, `RELEASE-NOTES-${version}.md`)
+  const notes = await askReleaseNotes()
+  const body = notes.trim() || `${version} release`
+  writeFileSync(notesFile, body)
+
+  console.log(`[release] tag ${tag}`)
+  const hasTag =
+    spawnSync('git', ['rev-parse', '-q', '--verify', `refs/tags/${tag}`], { cwd: ROOT }).status === 0
+  if (!hasTag) {
+    const created = spawnSync('git', ['tag', tag], { cwd: ROOT, stdio: 'inherit' })
+    if (created.status !== 0) {
+      console.error('[release] git tag failed — skipping the GitHub release')
+      return
+    }
+  }
+  const push = spawnSync('git', ['push', 'fork', tag], { cwd: ROOT, stdio: 'inherit' })
+  if (push.status !== 0) console.warn('[release] tag push failed — continuing with the local tag')
+
+  const ghCheck = spawnSync('gh', ['--version'], { shell: true, encoding: 'utf8' })
+  if (ghCheck.status !== 0) {
+    console.error('[release] gh CLI not found — install it (winget install GitHub.cli), run gh auth login once, then publish manually:')
+    console.error(`  gh release create ${tag} "${installer}" --title "SnowOffice v${version}" --notes-file "${notesFile}"`)
+    return
+  }
+  console.log(`[release] creating GitHub release ${tag} ...`)
+  const create = spawnSync(
+    'gh',
+    [
+      'release', 'create', tag,
+      installer,
+      blockmap,
+      '--repo', 'zhangxiaofan-star/snowoffice',
+      '--title', `SnowOffice v${version}`,
+      '--notes-file', notesFile,
+    ],
+    { shell: true, stdio: 'inherit' },
+  )
+  if (create.status !== 0) {
+    console.error(`[release] gh release create failed (exit ${create.status}) — artifacts:`)
+    console.error(`  installer: ${installer}`)
+    console.error(`  notes:     ${notesFile}`)
+  }
+}
