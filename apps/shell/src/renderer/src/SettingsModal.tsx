@@ -57,6 +57,7 @@ const LANG_OPTIONS = [
   { value: 'pt', label: 'Português' },
   { value: 'ru', label: 'Русский' },
   { value: 'th', label: 'ไทย' },
+  { value: 'vi', label: 'Tiếng Việt' },
   { value: 'zh', label: '简体中文' },
   { value: 'zh-TW', label: '繁體中文' },
 ] as const
@@ -1177,9 +1178,11 @@ function AiMediaPane({
             ? t('setAiSearchGensparkHint')
             : search.provider === 'parallel'
               ? t('setAiSearchParallelHint')
-              : searchMeta?.imageSearch
-                ? t('setAiSearchSerperHint')
-                : t('setAiSearchTavilyHint')}
+              : search.provider === 'serply'
+                ? t('setAiSearchSerplyHint')
+                : searchMeta?.imageSearch
+                  ? t('setAiSearchSerperHint')
+                  : t('setAiSearchTavilyHint')}
         </div>
         {search.provider !== 'genspark' &&
           keyRow('set-ai-search-key', searchKey, searchMeta?.keyPlaceholder ?? 'API Key', (v) =>
@@ -1640,6 +1643,21 @@ export function SettingsModal({
                         aria-checked={aiPrefs.spellcheck}
                         aria-label={t('setAiSpellcheck')}
                         onClick={() => updateAiPrefs({ spellcheck: !aiPrefs.spellcheck })}
+                      />
+                    </div>
+                    <div className="set-field">
+                      <div className="set-field-text">
+                        <div className="set-field-stack">
+                          <div className="set-field-label">{t('setAiOpenInNewDocs')}</div>
+                          <div className="set-field-desc">{t('setAiOpenInNewDocsDesc')}</div>
+                        </div>
+                      </div>
+                      <button
+                        className="set-switch"
+                        role="switch"
+                        aria-checked={aiPrefs.openInNewDocs}
+                        aria-label={t('setAiOpenInNewDocs')}
+                        onClick={() => updateAiPrefs({ openInNewDocs: !aiPrefs.openInNewDocs })}
                       />
                     </div>
                   </>
