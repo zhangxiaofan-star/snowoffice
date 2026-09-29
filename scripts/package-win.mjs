@@ -537,6 +537,9 @@ async function publishRelease(version, installer, blockmap) {
   if (push.status !== 0) console.warn('[release] tag push failed — continuing with the local tag')
 
   const ghCheck = spawnSync('gh', ['--version'], { shell: true, encoding: 'utf8' })
+  const ghExe = ghCheck.status !== 0 && existsSync('C:\Program Files\GitHub CLI\gh.exe')
+    ? 'C:\Program Files\GitHub CLI\gh.exe'
+    : 'gh'
   if (ghCheck.status !== 0) {
     console.error('[release] gh CLI not found — install it (winget install GitHub.cli), run gh auth login once, then publish manually:')
     console.error(`  gh release create ${tag} "${installer}" --title "SnowOffice v${version}" --notes-file "${notesFile}"`)
@@ -544,7 +547,7 @@ async function publishRelease(version, installer, blockmap) {
   }
   console.log(`[release] creating GitHub release ${tag} ...`)
   const create = spawnSync(
-    'gh',
+    ghExe,
     [
       'release', 'create', tag,
       installer,
