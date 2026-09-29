@@ -9,7 +9,7 @@ release/
 .env.*
 electron-builder.env
 ~$*
-
+.zcode/
 # Local ad-hoc e2e driver scripts (not pushed); the folder and README are tracked, the scripts are not
 /scripts/drivers/driver.*.mjs
 /probe*.mjs
