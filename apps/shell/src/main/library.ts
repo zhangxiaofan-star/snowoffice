@@ -36,7 +36,7 @@ interface LibraryFile {
 }
 
 /** stable identity for a path: absolute, and case-folded where the FS is */
-function pathKey(p: string): string {
+export function pathKey(p: string): string {
   const abs = isAbsolute(p) ? p : resolve(p)
   return process.platform === 'win32' ? abs.toLowerCase() : abs
 }

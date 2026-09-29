@@ -17,6 +17,7 @@ import type {
   FolderRoot,
   HomeApi,
   LibraryEntryInfo,
+  LibrarySnapshotInfo,
   MoveConflictPolicy,
   RecentEntry,
   FileSearchHit,
@@ -1033,9 +1034,25 @@ function LibraryView() {
   const i18n = useI18n()
   const { t, lang } = i18n
   const [entries, setEntries] = useState<LibraryEntryInfo[] | null>(null)
+  const [snapshotsFor, setSnapshotsFor] = useState<LibraryEntryInfo | null>(null)
+  const [snapshots, setSnapshots] = useState<LibrarySnapshotInfo[] | null>(null)
 
   const reload = () => {
     void window.aiOffice.libraryList().then(setEntries)
+  }
+  const openSnapshots = (entry: LibraryEntryInfo) => {
+    setSnapshotsFor(entry)
+    setSnapshots(null)
+    void window.aiOffice.librarySnapshots(entry.libPath).then(setSnapshots)
+  }
+  const restoreSnapshot = (timestamp: number) => {
+    if (!snapshotsFor) return
+    void window.aiOffice.librarySnapshotRestore(snapshotsFor.libPath, timestamp).then((ok) => {
+      if (ok) openSnapshots(snapshotsFor)
+    })
+  }
+  const createSnapshot = (entry: LibraryEntryInfo) => {
+    void window.aiOffice.librarySnapshotCreate(entry.libPath).then(() => openSnapshots(entry))
   }
   useEffect(() => {
     void window.aiOffice.libraryList().then(setEntries)
@@ -1107,6 +1124,12 @@ function LibraryView() {
                     <span className="recent-actions" onClick={(event) => event.stopPropagation()}>
                       <button
                         className="selection-action"
+                        onClick={() => openSnapshots(entry)}
+                      >
+                        {t('librarySnapshots')}
+                      </button>
+                      <button
+                        className="selection-action"
                         onClick={() => void window.aiOffice.libraryRevealOriginal(entry.libPath)}
                       >
                         {t('libraryRevealOriginal')}
@@ -1128,8 +1151,66 @@ function LibraryView() {
             </ul>
           </div>
         )}
+        {snapshotsFor && (
+          <LibrarySnapshotsModal
+            entry={snapshotsFor}
+            snapshots={snapshots}
+            onClose={() => setSnapshotsFor(null)}
+            onRestore={restoreSnapshot}
+          />
+        )}
       </section>
     </main>
+  )
+}
+
+/** version-history modal for one library copy */
+function LibrarySnapshotsModal({
+  entry,
+  snapshots,
+  onClose,
+  onRestore,
+}: {
+  readonly entry: LibraryEntryInfo
+  readonly snapshots: LibrarySnapshotInfo[] | null
+  readonly onClose: () => void
+  readonly onRestore: (timestamp: number) => void
+}): React.JSX.Element {
+  const i18n = useI18n()
+  const { t } = i18n
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div
+        className="modal library-snapshots-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("librarySnapshots")}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <h3>{t("librarySnapshots")}</h3>
+        <p className="modal-file-list-note">{entry.name}</p>
+        {snapshots === null ? (
+          <p className="empty-hint">…</p>
+        ) : snapshots.length === 0 ? (
+          <p className="empty-hint">{t("librarySnapshotEmpty")}</p>
+        ) : (
+          <ul className="library-snapshots-list">
+            {snapshots.map((snapshot) => (
+              <li key={snapshot.timestamp} className="library-snapshots-row">
+                <span>{formatModified(snapshot.timestamp, i18n)}</span>
+                <span className="library-snapshots-size">{formatSize(snapshot.sizeBytes)}</span>
+                <button className="selection-action" onClick={() => onRestore(snapshot.timestamp)}>
+                  {t("librarySnapshotRestore")}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="modal-buttons">
+          <button className="set-btn" onClick={onClose}>{t("cancel")}</button>
+        </div>
+      </div>
+    </div>
   )
 }
 

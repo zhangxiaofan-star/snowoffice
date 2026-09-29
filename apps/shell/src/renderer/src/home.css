@@ -2258,3 +2258,39 @@ body.vib .home {
   color: var(--text-secondary);
   font-size: 13px;
 }
+
+/* library version-history modal */
+.library-snapshots-modal {
+  width: min(520px, 90vw);
+}
+
+.library-snapshots-list {
+  list-style: none;
+  margin: 10px 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.library-snapshots-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 4px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.library-snapshots-row span:first-child {
+  flex: 1;
+}
+
+.library-snapshots-size {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.modal-file-list-note {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin: 4px 0 8px;
+}

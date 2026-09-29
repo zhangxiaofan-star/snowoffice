@@ -98,6 +98,12 @@ export interface RecentPage {
 }
 
 /** a document in the shell's library (the copy the app opens and saves) */
+export interface LibrarySnapshotInfo {
+  timestamp: number
+  name: string
+  sizeBytes: number
+}
+
 export interface LibraryEntryInfo {
   /** the copy under userData/library — the path every editor works on */
   libPath: string
@@ -231,6 +237,12 @@ export interface HomeApi {
   setLibraryDir(dir: string): Promise<{ dir: string; moved: number; failed: number }>
   /** OS directory picker seeded with `current`; null when cancelled */
   pickLibraryDir(current: string): Promise<string | null>
+  /** version snapshots of a library copy, newest first */
+  librarySnapshots(libPath: string): Promise<LibrarySnapshotInfo[]>
+  /** snapshot a library copy right now */
+  librarySnapshotCreate(libPath: string): Promise<boolean>
+  /** copy a snapshot back over the library copy (open tabs reload) */
+  librarySnapshotRestore(libPath: string, timestamp: number): Promise<boolean>
   /** reopen the previous session's file tabs on launch (default on) */
   getSessionRestore(): Promise<boolean>
   setSessionRestore(on: boolean): Promise<boolean>
@@ -531,6 +543,9 @@ export const HOME_CHANNELS = {
   getLibraryDir: 'home:get-library-dir',
   setLibraryDir: 'home:set-library-dir',
   pickLibraryDir: 'home:pick-library-dir',
+  librarySnapshots: 'home:library-snapshots',
+  librarySnapshotCreate: 'home:library-snapshot-create',
+  librarySnapshotRestore: 'home:library-snapshot-restore',
   getSessionRestore: 'home:get-session-restore',
   setSessionRestore: 'home:set-session-restore',
   revealPath: 'home:reveal-path',

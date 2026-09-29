@@ -82,6 +82,11 @@ import {
   reimportLibraryEntry,
   statLibraryEntry,
 } from './library'
+import {
+  listLibrarySnapshots,
+  restoreLibrarySnapshot,
+  snapshotLibraryCopy,
+} from './library-snapshots'
 import { OPEN_DOCUMENTS_FILE, clearOpenDocuments, publishOpenDocuments } from './open-documents'
 import { startControlServer, type ControlServer } from './control-server'
 import { controlHandler } from './control-handlers'
@@ -490,6 +495,10 @@ const APP_SETTINGS_PATH = () => join(app.getPath('userData'), 'app-settings.json
 // defaults to on — the flat app-settings file only records an explicit opt-out.
 
 const LIBRARY_INDEX_PATH = () => join(app.getPath('userData'), 'library.json')
+const SNAPSHOTS_ROOT = () => join(app.getPath('userData'), 'library-snapshots')
+let librarySnapshotWatcher: FolderWatcher | null = null
+const libraryMtimeCache = new Map<string, number>()
+let librarySnapshotFlushTimer: NodeJS.Timeout | null = null
 const LIBRARY_REG_KEY = 'HKCU\\Software\\GenOffice'
 
 let cachedLibraryDir: string | null = null
@@ -563,6 +572,46 @@ const SESSION_PATH = () => join(app.getPath('userData'), 'session.json')
 
 function sessionRestoreEnabled(): boolean {
   return readAppSettings(APP_SETTINGS_PATH()).sessionRestore !== false
+}
+
+/** snapshot every library copy whose mtime moved since the last flush */
+function flushLibrarySnapshots(): void {
+  librarySnapshotFlushTimer = null
+  for (const entry of readLibraryEntries(LIBRARY_INDEX_PATH())) {
+    if (!existsSync(entry.libPath)) continue
+    let mtime = 0
+    try {
+      mtime = statSync(entry.libPath).mtimeMs
+    } catch {
+      continue
+    }
+    const key = process.platform === 'win32' ? entry.libPath.toLowerCase() : entry.libPath
+    if (libraryMtimeCache.get(key) === mtime) continue
+    libraryMtimeCache.set(key, mtime)
+    if (snapshotLibraryCopy(SNAPSHOTS_ROOT(), entry)) {
+      console.log('[snapshots] saved a version of', basename(entry.libPath))
+    }
+  }
+}
+
+/** watch the library directory so every save leaves a version behind */
+function ensureLibrarySnapshotWatcher(): void {
+  if (librarySnapshotWatcher) return
+  const dir = libraryDir()
+  mkdirSync(dir, { recursive: true })
+  librarySnapshotWatcher = new FolderWatcher(dir, () => {
+    if (librarySnapshotFlushTimer) clearTimeout(librarySnapshotFlushTimer)
+    librarySnapshotFlushTimer = setTimeout(flushLibrarySnapshots, 1500)
+  })
+  // prime the mtime cache without snapshotting the state we just imported
+  for (const entry of readLibraryEntries(LIBRARY_INDEX_PATH())) {
+    try {
+      const key = process.platform === 'win32' ? entry.libPath.toLowerCase() : entry.libPath
+      libraryMtimeCache.set(key, statSync(entry.libPath).mtimeMs)
+    } catch {
+      // missing copy: nothing to prime
+    }
+  }
 }
 
 function persistSession(): void {
@@ -3569,6 +3618,19 @@ function routeDocumentPath(filePath: string): boolean {
   // a detached editor window already shows this file — focus it, never a second copy
   if (focusDetachedByPath(targetPath)) return true
   if (!tabManager) return false
+  // version history: keep a snapshot of a library copy right before a new
+  // editing session starts on it (never for files already open in a tab)
+  if (targetPath !== filePath && !tabManager.list().some((t) => t.filePath === targetPath)) {
+    const entry = findLibraryEntryByLibPath(LIBRARY_INDEX_PATH(), targetPath)
+    if (entry && snapshotLibraryCopy(SNAPSHOTS_ROOT(), entry)) {
+      const mtKey = process.platform === 'win32' ? targetPath.toLowerCase() : targetPath
+      try {
+        libraryMtimeCache.set(mtKey, statSync(targetPath).mtimeMs)
+      } catch {
+        // vanished between snapshot and stat: the flush pass re-checks
+      }
+    }
+  }
   if (DOCX_RE.test(targetPath)) {
     recordRecentFile(targetPath)
     const existing = tabManager.findDocsTabByPath(targetPath)
@@ -4157,6 +4219,42 @@ function registerHomeIpc(): void {
     writeAppSetting(APP_SETTINGS_PATH(), 'sessionRestore', enabled)
     return enabled
   })
+
+  ipcMain.handle(HOME_CHANNELS.librarySnapshots, (_event, libPath: unknown) => {
+    if (typeof libPath !== 'string') return []
+    const entry = findLibraryEntryByLibPath(LIBRARY_INDEX_PATH(), libPath)
+    return entry ? listLibrarySnapshots(SNAPSHOTS_ROOT(), entry.originalPath) : []
+  })
+
+  ipcMain.handle(HOME_CHANNELS.librarySnapshotCreate, (_event, libPath: unknown) => {
+    if (typeof libPath !== 'string') return false
+    const entry = findLibraryEntryByLibPath(LIBRARY_INDEX_PATH(), libPath)
+    const ok = entry ? snapshotLibraryCopy(SNAPSHOTS_ROOT(), entry) : false
+    if (ok) {
+      const key = process.platform === 'win32' ? libPath.toLowerCase() : libPath
+      try {
+        libraryMtimeCache.set(key, statSync(libPath).mtimeMs)
+      } catch {
+        // copy vanished: nothing to cache
+      }
+    }
+    return ok
+  })
+
+  ipcMain.handle(
+    HOME_CHANNELS.librarySnapshotRestore,
+    (_event, libPath: unknown, timestamp: unknown): boolean => {
+      if (typeof libPath !== 'string' || typeof timestamp !== 'number') return false
+      const entry = findLibraryEntryByLibPath(LIBRARY_INDEX_PATH(), libPath)
+      if (!entry) return false
+      const restored = restoreLibrarySnapshot(SNAPSHOTS_ROOT(), entry, timestamp)
+      if (!restored) return false
+      // an open editor tab shows stale content until it reloads the file
+      const existing = tabManager?.list().find((t) => t.filePath === libPath)
+      if (existing) tabManager?.reloadTab(existing.id)
+      return true
+    },
+  )
 
   ipcMain.handle(HOME_CHANNELS.getLibraryDir, (): string => libraryDir())
 
@@ -6099,6 +6197,7 @@ app.whenReady().then(async () => {
     })
   }
 
+  ensureLibrarySnapshotWatcher()
   const hadArgvFiles = pendingLaunchPaths.length > 0
   openLaunchPaths(pendingLaunchPaths)
   pendingLaunchPaths = []
