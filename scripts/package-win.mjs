@@ -186,6 +186,9 @@ function ensureToolchainPaths() {
   } catch {
     // no winget packages dir: the toolchain may already be on the user's PATH
   }
+  // also the layout setup-dev.bat installs to
+  const localTools = join(process.env.LOCALAPPDATA ?? '', 'GenOfficeTools', 'mingw64', 'bin')
+  if (existsSync(join(localTools, 'gcc.exe'))) extra.push(localTools)
   if (extra.length) {
     process.env.PATH = [...extra, process.env.PATH].join(process.platform === 'win32' ? ';' : ':')
     console.log(`[env] added to PATH: ${extra.join(', ')}`)
