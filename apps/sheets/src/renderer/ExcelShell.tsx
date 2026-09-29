@@ -30,6 +30,7 @@ import {
 } from './ribbon-icons'
 
 import { ColorDropdown } from './ColorDropdown'
+import { FormulaFavoritesDialog } from './FormulaFavoritesDialog'
 import { FormatCellsDialog } from './FormatCellsDialog'
 import { AllowEditRangesDialog } from './AllowEditRangesDialog'
 import { GoToDialog } from './GoToDialog'
@@ -429,6 +430,7 @@ export function ExcelShell({
   const [showLinkDialog, setShowLinkDialog] = useState(false)
   const [showSortDialog, setShowSortDialog] = useState(false)
   const [showDedupeDialog, setShowDedupeDialog] = useState(false)
+  const [showFormulaFavorites, setShowFormulaFavorites] = useState(false)
   const [showNameManager, setShowNameManager] = useState(false)
   const [showPivotDialog, setShowPivotDialog] = useState(false)
   const [pivotEditSeed, setPivotEditSeed] = useState<PivotEditSeed | null>(null)
@@ -478,6 +480,7 @@ export function ExcelShell({
     else if (command === 'link-open') setShowLinkDialog(true)
     else if (command === 'sort-custom-open') setShowSortDialog(true)
     else if (command === 'remove-duplicates-open') setShowDedupeDialog(true)
+    else if (command === 'formula-favorites-open') setShowFormulaFavorites(true)
     else if (command === 'name-manager-open') setShowNameManager(true)
     else if (command === 'pivot-open') setShowPivotDialog(true)
     else if (command === 'pivot-edit') setPivotEditSeed(onGetPivotEditSeed())
@@ -897,6 +900,9 @@ export function ExcelShell({
       )}
       {showDedupeDialog && (
         <RemoveDuplicatesDialog onCommand={onCommand} onClose={() => setShowDedupeDialog(false)} />
+      )}
+      {showFormulaFavorites && (
+        <FormulaFavoritesDialog onCommand={onCommand} onClose={() => setShowFormulaFavorites(false)} />
       )}
       {showNameManager &&
         (() => {
@@ -2076,6 +2082,20 @@ function Ribbon({
             detail={t('appBrowseCatalog')}
             symbol="ƒx"
             onClick={() => onCommand('insert-function-open')}
+          />
+          <RibbonButton
+            large
+            label={t('appFormulaFavorites')}
+            detail={t('appFormulaFavoritesDetail')}
+            symbol="★"
+            onClick={() => onCommand('formula-favorites-open')}
+          />
+          <RibbonButton
+            large
+            label={t('appFormulaSave')}
+            detail={t('appFormulaFavoritesDetail')}
+            symbol="☆"
+            onClick={() => onCommand('formula-favorites-save')}
           />
           <div className="ribbon-tool large" data-tip={t('appAutoSumTitle')}>
             <span className="tool-icon-row">

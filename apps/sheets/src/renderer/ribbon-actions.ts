@@ -65,6 +65,7 @@ import {
 } from './edit-journal'
 import { applyShowFormulasView, formulaViewSheets } from './formula-view'
 import { t } from './i18n/locale'
+import { findFormulaFavorite, saveFormulaFavorite } from './formula-favorites'
 import { copySelectionAsMarkdown, exportSelectionToFile } from './range-export'
 import { requestCellsAction } from './insert-delete-cells'
 import type { CellsMode } from './insert-delete-cells'
@@ -204,6 +205,32 @@ export function handleRibbonCommand(ctx: RibbonCommandContext, command: string):
   if (!runtime) return
   if (command === 'undo' || command === 'redo') {
     void runtime.univerAPI[command]()
+    return
+  }
+  if (command === 'formula-favorites-save') {
+    const workbook = runtime.univerAPI.getActiveWorkbook()
+    const worksheet = workbook?.getActiveSheet()
+    const activeRange = workbook?.getActiveRange()
+    if (!worksheet || !activeRange) return
+    const formula = worksheet.getRange(activeRange.getRow(), activeRange.getColumn()).getFormula()
+    if (!formula) {
+      ctx.setMessage(t('appFormulaNoFormula'))
+      return
+    }
+    saveFormulaFavorite(formula)
+    ctx.setMessage(t('appFormulaSaved'))
+    return
+  }
+  if (command.startsWith('formula-favorites-insert:')) {
+    const favorite = findFormulaFavorite(command.slice('formula-favorites-insert:'.length))
+    const workbook = runtime.univerAPI.getActiveWorkbook()
+    const worksheet = workbook?.getActiveSheet()
+    const activeRange = workbook?.getActiveRange()
+    if (!favorite || !worksheet || !activeRange) return
+    void ctx.runOps([
+      { op: 'set_formula', sheetId: worksheet.getSheetId(), address: formatAddress(activeRange.getRow(), activeRange.getColumn()), formula: favorite.formula },
+    ])
+    ctx.setMessage(t('appFormulaInserted'))
     return
   }
   if (command === 'selection-copy-md') {

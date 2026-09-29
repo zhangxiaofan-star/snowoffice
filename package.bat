@@ -29,7 +29,7 @@ echo.
 if %EXITCODE%==0 (
   echo Packaging finished. Installer is in apps\shell\release\
 ) else (
-  echo Packaging FAILED with exit code %EXITCODE%. See the log above.
+  echo Packaging FAILED with exit code %EXITCODE%. Details: package-last-run.log
 )
 pause
 exit /b %EXITCODE%

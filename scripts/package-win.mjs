@@ -32,10 +32,22 @@
  *    script validates the asar after packing; if it is truncated it re-packs
  *    it with @electron/asar from apps/shell/out and rebuilds the NSIS
  *    installer from the fixed directory via --prepackaged.
+ *
+ * 4. False smoke-test failure. The packed app takes the app-level single-
+ *    instance lock, so while the user's own GenOffice is running the smoke-
+ *    launched instance quits immediately and the check reports "exited early"
+ *    even though the build is fine. The smoke launch points GENOFFICE_USER_DATA
+ *    at a scratch dir (separate userData, hence a separate lock) and prints the
+ *    app's stderr when it does fail.
+ *
+ * Everything printed here and by the child commands is also appended to
+ * package-last-run.log, so a failed run can be read after the console window
+ * (package.bat) is gone.
  */
 
 import { spawn, spawnSync } from 'node:child_process'
 import {
+  appendFileSync,
   copyFileSync,
   cpSync,
   existsSync,
@@ -85,6 +97,33 @@ const flags = new Set(args.filter((a) => a.startsWith('--')))
 const skipBuild = flags.has('--skip-build')
 const forceSidecar = flags.has('--sidecar')
 const skipSmoke = flags.has('--skip-smoke')
+
+// ---- 0. run log ---------------------------------------------------------------
+
+// Everything the script and its child commands print goes to the console AND
+// package-last-run.log. appendFileSync per chunk: no buffering, so the log is
+// complete even on process.exit() from a failure path.
+const LOG_PATH = join(ROOT, 'package-last-run.log')
+writeFileSync(LOG_PATH, `=== GenOffice packaging log — started ${new Date().toLocaleString()} ===\n`)
+// child-command chunks bypass console.* and need explicit forwarding to both
+const logOut = (chunk) => {
+  process.stdout.write(chunk)
+  appendFileSync(LOG_PATH, chunk)
+}
+const logErr = (chunk) => {
+  process.stderr.write(chunk)
+  appendFileSync(LOG_PATH, chunk)
+}
+{
+  // route console.* through the log too; the original still does the printing
+  const format = createRequire(import.meta.url)('node:util').format
+  const tee = (original) => (...args) => {
+    appendFileSync(LOG_PATH, format(...args) + '\n')
+    original(...args)
+  }
+  console.log = tee(console.log.bind(console))
+  console.error = tee(console.error.bind(console))
+}
 
 /** value of `--flag value` / `--flag=value` from the argv list */
 function flagValue(flag) {
@@ -143,18 +182,25 @@ function applyVersionRequest() {
   return next
 }
 
-/** run a command, streaming output; hard-fail the script on non-zero exit */
-function run(cmd, opts = {}) {
+/** run a command, streaming its output live (and into the log); hard-fail on non-zero exit */
+async function run(cmd, opts = {}) {
   console.log(`\n> ${cmd}`)
-  const r = spawnSync(cmd, {
-    shell: true,
-    stdio: 'inherit',
-    cwd: ROOT,
-    ...opts,
+  const code = await new Promise((resolvePromise) => {
+    // pipe + forward instead of 'inherit': inherited fds bypass console.* and
+    // would never reach the log file
+    const child = spawn(cmd, {
+      shell: true,
+      cwd: ROOT,
+      ...opts,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    child.stdout.on('data', logOut)
+    child.stderr.on('data', logErr)
+    child.on('close', resolvePromise)
   })
-  if (r.status !== 0) {
-    console.error(`\ncommand failed (exit ${r.status}): ${cmd}`)
-    process.exit(r.status ?? 1)
+  if (code !== 0) {
+    console.error(`\ncommand failed (exit ${code}): ${cmd}`)
+    process.exit(code ?? 1)
   }
 }
 
@@ -212,7 +258,7 @@ function ensureToolchainPaths() {
 
 // ---- 2. sidecar -------------------------------------------------------------
 
-function ensureSidecar(cargoAvailable) {
+async function ensureSidecar(cargoAvailable) {
   if (!forceSidecar && nonEmpty(SIDECAR_STAGED)) {
     console.log('[sidecar] staged x86_64-pc-windows-gnu sidecar already present')
     return
@@ -231,7 +277,7 @@ function ensureSidecar(cargoAvailable) {
     }
   } else {
     console.log('[sidecar] building xlsx-sidecar (release)...')
-    run(
+    await run(
       'cargo build --release --manifest-path apps/sheets/native/xlsx-engine/Cargo.toml --config apps/sheets/native/xlsx-engine/.cargo/config.toml',
     )
   }
@@ -305,8 +351,10 @@ function repackAppAsar(dest) {
   const staging = join(RELEASE, 'asar-staging')
   rmSync(staging, { recursive: true, force: true })
   mkdirSync(join(staging, 'node_modules'), { recursive: true })
-  cpSync(join(SHELL, 'out'), join(staging, 'out'))
-  cpSync(join(ROOT, 'node_modules', 'ws'), join(staging, 'node_modules', 'ws'))
+  cpSync(join(SHELL, 'out'), join(staging, 'out'), { recursive: true })
+  cpSync(join(ROOT, 'node_modules', 'ws'), join(staging, 'node_modules', 'ws'), {
+    recursive: true,
+  })
   // the manifest electron-builder would synthesize: main is all the runtime needs
   writeFileSync(
     join(staging, 'package.json'),
@@ -328,14 +376,40 @@ function smokeTest() {
   const exe = join(UNPACKED, 'GenOffice.exe')
   console.log('[smoke] launching the packed app for 8s...')
   return new Promise((resolvePromise) => {
-    const child = spawn(exe, [], { cwd: UNPACKED, stdio: 'ignore' })
+    // Scratch userData: without it the smoke instance fights the user's running
+    // GenOffice for the single-instance lock and quits within a second — a
+    // perfectly good build then fails the check (pitfall 4 in the header). It
+    // also keeps the smoke boot from touching the real profile's databases.
+    const smokeUserData = join(RELEASE, 'smoke-user-data')
+    rmSync(smokeUserData, { recursive: true, force: true })
+    const child = spawn(exe, [], {
+      cwd: UNPACKED,
+      stdio: ['ignore', 'ignore', 'pipe'],
+      env: { ...process.env, GENOFFICE_USER_DATA: smokeUserData },
+    })
+    let stderr = ''
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk
+    })
     setTimeout(() => {
       const alive = child.exitCode === null && !child.signalCode
       if (alive) {
         console.log('[smoke] PASS — app is running with a live process')
         spawnSync('taskkill', ['/PID', String(child.pid), '/F'], { shell: true, stdio: 'ignore' })
+        try {
+          rmSync(smokeUserData, { recursive: true, force: true })
+        } catch {
+          // the killed process may still hold handles; the next run clears it
+        }
       } else {
         console.error(`[smoke] FAIL — app exited early (code ${child.exitCode})`)
+        const lines = stderr.trimEnd().split('\n')
+        if (lines[0] !== '') {
+          console.error('[smoke] the app printed on stderr:')
+          for (const line of lines.slice(-20)) console.error(`  | ${line}`)
+        } else {
+          console.error('[smoke] no stderr output; a running GenOffice no longer blocks this')
+        }
       }
       resolvePromise(alive)
     }, 8000)
@@ -359,12 +433,12 @@ async function main() {
 
   const version = applyVersionRequest()
   const cargoAvailable = ensureToolchainPaths()
-  ensureSidecar(cargoAvailable)
+  await ensureSidecar(cargoAvailable)
 
   if (!skipBuild) {
     console.log('\n=== building third-party notices + all workspaces ===')
-    run('npm run notices -w @genoffice/shell')
-    run('npm run build:all')
+    await run('npm run notices -w @genoffice/shell')
+    await run('npm run build:all')
   } else {
     console.log('\n[skip] build:all (existing out/ dirs are used as-is)')
   }
@@ -375,7 +449,7 @@ async function main() {
   }
 
   console.log('\n=== electron-builder pass 1 (pack + NSIS) ===')
-  run('npx electron-builder --win', { cwd: SHELL })
+  await run('npx electron-builder --win', { cwd: SHELL })
 
   const asarPath = join(UNPACKED, 'resources', 'app.asar')
   if (!existsSync(asarPath)) {
@@ -393,7 +467,7 @@ async function main() {
       process.exit(1)
     }
     console.log('[asar] fixed; rebuilding the installer from the repaired directory')
-    run('npx electron-builder --win --prepackaged release/win-unpacked', { cwd: SHELL })
+    await run('npx electron-builder --win --prepackaged release/win-unpacked', { cwd: SHELL })
   }
 
   const shellPkg = JSON.parse(readFileSync(join(SHELL, 'package.json'), 'utf8'))
@@ -412,7 +486,7 @@ async function main() {
   }
 
   console.log(
-    `\n=== DONE ===\nVersion:   ${shellPkg.version}\nInstaller: ${installer}\nUnpacked:  ${UNPACKED}`,
+    `\n=== DONE ===\nVersion:   ${shellPkg.version}\nInstaller: ${installer}\nUnpacked:  ${UNPACKED}\nLog:       ${LOG_PATH}`,
   )
 }
 

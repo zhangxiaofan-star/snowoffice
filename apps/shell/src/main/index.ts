@@ -375,9 +375,12 @@ import { isUpdateChannel, type UpdateChannel } from '../shared/update-api'
 // ANY unpacked run (`npm run shell`, `npm run dev`, `npx electron .`) must not
 // share the installed app's userData or single-instance lock — otherwise a dev
 // run silently quits and forwards its argv to the running installed GenOffice.
-// GENOFFICE_USER_DATA: test drivers point this at a scratch dir so an
-// automated instance can run alongside the dev instance (separate lock).
-if (!app.isPackaged)
+// GENOFFICE_USER_DATA: test drivers and the packaging script's smoke launch
+// point this at a scratch dir so an automated instance can run alongside a
+// real one — separate userData, hence a separate single-instance lock. Honored
+// for packaged runs too, but only when explicitly set (a packaged run with no
+// env must keep using the installed app's real profile).
+if (!app.isPackaged || process.env.GENOFFICE_USER_DATA)
   app.setPath(
     'userData',
     process.env.GENOFFICE_USER_DATA ?? join(app.getPath('appData'), 'GenOffice Dev'),
