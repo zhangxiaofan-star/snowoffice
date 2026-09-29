@@ -811,6 +811,25 @@ export const strings = {
     onbBack: 'Back',
   },
   vi: {
+    // Document library
+    navLibrary: 'Thư viện',
+    libraryHint:
+      'Các tệp bạn mở bằng GenOffice sẽ tự động được sao chép vào thư viện. Mở, chỉnh sửa và lưu đều thực hiện trên bản sao đó — tệp gốc không bao giờ bị thay đổi.',
+    libraryEmpty: 'Chưa có tài liệu nào. Các tệp bạn mở bằng GenOffice sẽ tự động được thu vào đây.',
+    libraryOriginalCol: 'Vị trí tệp gốc',
+    libraryImportedCol: 'Thời gian nhập',
+    libraryRevealOriginal: 'Hiện tệp gốc',
+    libraryReimport: 'Nhập lại từ tệp gốc',
+    libraryRemove: 'Xóa khỏi thư viện',
+    setLibraryAutoImport: 'Tự động sao chép tệp đã mở vào thư viện',
+    setLibraryDir: 'Vị trí thư viện tài liệu',
+    setLibraryDirDesc:
+      'Thư mục lưu các bản sao đã nhập. Khi thay đổi, các bản sao hiện có sẽ được di chuyển theo.',
+    setLibraryDirChange: 'Thay đổi…',
+    setLibraryDirReset: 'Khôi phục mặc định',
+    setLibraryDirMoved: 'Đã di chuyển {n} tệp.',
+    setLibraryAutoImportDesc:
+      'Giữ một bản sao nội bộ của mọi tệp đã mở; việc chỉnh sửa và lưu sẽ thực hiện trên bản sao đó, tệp gốc vẫn giữ nguyên.',
     addFolderRoot: 'Thêm thư mục…',
     removeFolderRoot: 'Xóa khỏi danh sách',
     rootUnavailable: 'Không khả dụng',
