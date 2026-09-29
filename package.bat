@@ -9,6 +9,12 @@ rem   --skip-smoke           skip the launch check at the end
 setlocal
 cd /d "%~dp0"
 
+@REM package.bat                       # 完整流程（编译 + 打包 + 启动自检）
+@REM package.bat --bump patch          # 版本号自动 +0.0.1 再打包（0.11.0 → 0.11.1）
+@REM package.bat --bump minor          # +0.1.0（发新功能用）
+@REM package.bat --version 1.0.0       # 直接指定版本号
+@REM package.bat --skip-build          # 改动只在界面层时，快速重出安装包
+
 where node >nul 2>nul
 if errorlevel 1 (
   echo [FAIL] Node.js not found in PATH. Install Node.js 22+ first.
