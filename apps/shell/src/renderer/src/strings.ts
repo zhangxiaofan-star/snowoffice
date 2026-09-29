@@ -19,6 +19,9 @@ export const strings = {
     setLibraryDirReset: '恢复默认',
     sessionRestore: '启动时恢复上次会话',
     sessionRestoreDesc: '重新打开上次退出时开启的文档标签页。',
+    palettePlaceholder: '搜索文件，或输入命令…',
+    paletteSettings: '设置',
+    paletteNoResults: '没有匹配的结果',
     setLibraryDirMoved: '已迁移 {n} 个文件。',
     setLibraryAutoImportDesc:
       '把打开的文件复制一份到软件内部存储；之后编辑和保存都作用于这份副本，原文件保持不变。',
@@ -423,6 +426,9 @@ export const strings = {
     setLibraryDirReset: 'Reset to default',
     sessionRestore: 'Reopen the last session on launch',
     sessionRestoreDesc: 'Reopen the document tabs that were open when the app last closed.',
+    palettePlaceholder: 'Search files, or type a command…',
+    paletteSettings: 'Settings',
+    paletteNoResults: 'No matching results',
     setLibraryDirMoved: 'Moved {n} file(s).',
     setLibraryAutoImportDesc:
       'Keep an internal copy of every opened file; editing and saving work on that copy and the original file stays untouched.',
@@ -836,6 +842,9 @@ export const strings = {
     setLibraryDirReset: 'Khôi phục mặc định',
     sessionRestore: 'Khôi phục phiên làm việc trước khi khởi động',
     sessionRestoreDesc: 'Mở lại các thẻ tài liệu đang mở lần đóng ứng dụng trước đó.',
+    palettePlaceholder: 'Tìm kiếm tệp hoặc nhập lệnh…',
+    paletteSettings: 'Cài đặt',
+    paletteNoResults: 'Không có kết quả phù hợp',
     setLibraryDirMoved: 'Đã di chuyển {n} tệp.',
     setLibraryAutoImportDesc:
       'Giữ một bản sao nội bộ của mọi tệp đã mở; việc chỉnh sửa và lưu sẽ thực hiện trên bản sao đó, tệp gốc vẫn giữ nguyên.',
@@ -1251,6 +1260,9 @@ export const strings = {
     setLibraryDirReset: 'デフォルトに戻す',
     sessionRestore: '起動時に前回のセッションを復元',
     sessionRestoreDesc: '前回終了時に開いていたドキュメントタブを再度開きます。',
+    palettePlaceholder: 'ファイルを検索、またはコマンドを入力…',
+    paletteSettings: '設定',
+    paletteNoResults: '一致する結果はありません',
     setLibraryDirMoved: '{n} 件のファイルを移動しました。',
     setLibraryAutoImportDesc:
       '開いたファイルのコピーをアプリ内に保存します。編集と保存はコピーに対して行われ、元のファイルは変更されません。',
@@ -1678,6 +1690,9 @@ export const strings = {
     setLibraryDirReset: '기본값으로 되돌리기',
     sessionRestore: '시작 시 마지막 세션 복원',
     sessionRestoreDesc: '앱을 마지막으로 닫을 때 열려 있던 문서 탭을 다시 엽니다.',
+    palettePlaceholder: '파일 검색 또는 명령 입력…',
+    paletteSettings: '설정',
+    paletteNoResults: '일치하는 결과가 없습니다',
     setLibraryDirMoved: '파일 {n}개를 이동했습니다.',
     setLibraryAutoImportDesc:
       '연 파일의 사본을 앱 내부에 저장합니다. 편집과 저장은 사본에 적용되며 원본 파일은 그대로 유지됩니다.',
@@ -2096,6 +2111,9 @@ export const strings = {
     setLibraryDirReset: 'Rétablir par défaut',
     sessionRestore: 'Rouvrir la dernière session au lancement',
     sessionRestoreDesc: 'Rouvre les onglets de documents ouverts à la dernière fermeture.',
+    palettePlaceholder: 'Rechercher des fichiers, ou taper une commande…',
+    paletteSettings: 'Paramètres',
+    paletteNoResults: 'Aucun résultat',
     setLibraryDirMoved: '{n} fichier(s) déplacé(s).',
     setLibraryAutoImportDesc:
       'Conserve une copie interne de chaque fichier ouvert ; l’édition et l’enregistrement portent sur cette copie et le fichier d’origine reste intact.',
@@ -2530,6 +2548,9 @@ export const strings = {
     setLibraryDirReset: 'Auf Standard zurücksetzen',
     sessionRestore: 'Letzte Sitzung beim Start wiederherstellen',
     sessionRestoreDesc: 'Öffnet die Dokument-Tabs des letzten Schließens erneut.',
+    palettePlaceholder: 'Dateien suchen oder Befehl eingeben…',
+    paletteSettings: 'Einstellungen',
+    paletteNoResults: 'Keine Treffer',
     setLibraryDirMoved: '{n} Datei(en) verschoben.',
     setLibraryAutoImportDesc:
       'Behält eine interne Kopie jeder geöffneten Datei; Bearbeiten und Speichern wirken auf die Kopie, die Originaldatei bleibt unverändert.',
@@ -2966,6 +2987,9 @@ export const strings = {
     setLibraryDirReset: 'Restaurar predeterminado',
     sessionRestore: 'Reabrir la última sesión al iniciar',
     sessionRestoreDesc: 'Vuelve a abrir las pestañas de documentos abiertas al cerrar por última vez.',
+    palettePlaceholder: 'Buscar archivos o escribir un comando…',
+    paletteSettings: 'Configuración',
+    paletteNoResults: 'Sin coincidencias',
     setLibraryDirMoved: 'Se movieron {n} archivo(s).',
     setLibraryAutoImportDesc:
       'Guarda una copia interna de cada archivo abierto; la edición y el guardado se aplican a esa copia y el archivo original permanece intacto.',
@@ -3397,6 +3421,9 @@ export const strings = {
     setLibraryDirReset: 'กลับเป็นค่าเริ่มต้น',
     sessionRestore: 'เปิดเซสชันล่าสุดอีกครั้งเมื่อเริ่มโปรแกรม',
     sessionRestoreDesc: 'เปิดแท็บเอกสารที่เปิดอยู่ตอนปิดโปรแกรมครั้งล่าสุดอีกครั้ง',
+    palettePlaceholder: 'ค้นหาไฟล์ หรือพิมพ์คำสั่ง…',
+    paletteSettings: 'การตั้งค่า',
+    paletteNoResults: 'ไม่มีผลลัพธ์ที่ตรงกัน',
     setLibraryDirMoved: 'ย้าย {n} ไฟล์แล้ว',
     setLibraryAutoImportDesc:
       'เก็บสำเนาภายในของทุกไฟล์ที่เปิด การแก้ไขและบันทึกจะกระทำกับสำเนา และไฟล์ต้นฉบับจะไม่ถูกเปลี่ยนแปลง',
@@ -3812,6 +3839,9 @@ export const strings = {
     setLibraryDirReset: 'Kembalikan ke bawaan',
     sessionRestore: 'Buka kembali sesi terakhir saat memulai',
     sessionRestoreDesc: 'Membuka kembali tab dokumen yang terbuka saat aplikasi terakhir ditutup.',
+    palettePlaceholder: 'Cari file, atau ketik perintah…',
+    paletteSettings: 'Pengaturan',
+    paletteNoResults: 'Tidak ada hasil yang cocok',
     setLibraryDirMoved: 'Memindahkan {n} berkas.',
     setLibraryAutoImportDesc:
       'Menyimpan salinan internal setiap file yang dibuka; penyuntingan dan penyimpanan bekerja pada salinan itu dan file asli tetap utuh.',
@@ -4238,6 +4268,9 @@ export const strings = {
     setLibraryDirReset: 'Вернуть по умолчанию',
     sessionRestore: 'Открывать последнюю сессию при запуске',
     sessionRestoreDesc: 'Заново открывает вкладки документов, открытые при последнем закрытии.',
+    palettePlaceholder: 'Поиск файлов или введите команду…',
+    paletteSettings: 'Настройки',
+    paletteNoResults: 'Нет подходящих результатов',
     setLibraryDirMoved: 'Перемещено файлов: {n}.',
     setLibraryAutoImportDesc:
       'Хранит внутреннюю копию каждого открытого файла; редактирование и сохранение затрагивают копию, исходный файл остаётся нетронутым.',
@@ -4661,6 +4694,9 @@ export const strings = {
     setLibraryDirReset: 'استعادة الافتراضي',
     sessionRestore: 'استعادة الجلسة الأخيرة عند التشغيل',
     sessionRestoreDesc: 'يعيد فتح علامات تبويب المستندات التي كانت مفتوحة عند آخر إغلاق.',
+    palettePlaceholder: 'ابحث عن ملفات أو اكتب أمرًا…',
+    paletteSettings: 'الإعدادات',
+    paletteNoResults: 'لا توجد نتائج مطابقة',
     setLibraryDirMoved: 'تم نقل {n} ملف (ملفات).',
     setLibraryAutoImportDesc:
       'يحتفظ بنسخة داخلية من كل ملف مفتوح؛ التحرير والحفظ يعملان على النسخة ويبقى الملف الأصلي دون تغيير.',
@@ -5077,6 +5113,9 @@ export const strings = {
     setLibraryDirReset: 'Restaurar padrão',
     sessionRestore: 'Reabrir a última sessão ao iniciar',
     sessionRestoreDesc: 'Reabre as abas de documentos que estavam abertas no último fechamento.',
+    palettePlaceholder: 'Pesquisar arquivos ou digitar um comando…',
+    paletteSettings: 'Configurações',
+    paletteNoResults: 'Nenhum resultado correspondente',
     setLibraryDirMoved: '{n} arquivo(s) movido(s).',
     setLibraryAutoImportDesc:
       'Mantém uma cópia interna de cada arquivo aberto; editar e salvar atuam sobre a cópia e o arquivo original permanece intacto.',
@@ -5498,6 +5537,9 @@ export const strings = {
     setLibraryDirReset: 'Ripristina predefinito',
     sessionRestore: 'Riapri l\'ultima sessione all\'avvio',
     sessionRestoreDesc: 'Apre di nuovo le schede dei documenti aperte all\'ultima chiusura.',
+    palettePlaceholder: 'Cerca file o digita un comando…',
+    paletteSettings: 'Impostazioni',
+    paletteNoResults: 'Nessun risultato corrispondente',
     setLibraryDirMoved: 'Spostati {n} file.',
     setLibraryAutoImportDesc:
       'Conserva una copia interna di ogni file aperto; modifica e salvataggio agiscono sulla copia e il file originale resta intatto.',
@@ -5917,6 +5959,9 @@ export const strings = {
     setLibraryDirReset: 'Przywróć domyślne',
     sessionRestore: 'Przywróć ostatnią sesję przy uruchomieniu',
     sessionRestoreDesc: 'Ponownie otwiera karty dokumentów otwartych podczas ostatniego zamknięcia.',
+    palettePlaceholder: 'Szukaj plików lub wpisz polecenie…',
+    paletteSettings: 'Ustawienia',
+    paletteNoResults: 'Brak pasujących wyników',
     setLibraryDirMoved: 'Przeniesiono pliki: {n}.',
     setLibraryAutoImportDesc:
       'Przechowuje wewnętrzną kopię każdego otwartego pliku; edycja i zapis dotyczą kopii, a oryginalny plik pozostaje nietknięty.',
@@ -6332,6 +6377,9 @@ export const strings = {
     setLibraryDirReset: 'Obnovit výchozí',
     sessionRestore: 'Obnovit poslední relaci při spuštění',
     sessionRestoreDesc: 'Znovu otevře karty dokumentů otevřené při posledním ukončení.',
+    palettePlaceholder: 'Hledat soubory nebo zadejte příkaz…',
+    paletteSettings: 'Nastavení',
+    paletteNoResults: 'Žádné odpovídající výsledky',
     setLibraryDirMoved: 'Přesunuto souborů: {n}.',
     setLibraryAutoImportDesc:
       'Uchovává interní kopii každého otevřeného souboru; úpravy a ukládání se týkají kopie a původní soubor zůstává nezměněn.',
@@ -6747,6 +6795,9 @@ export const strings = {
     setLibraryDirReset: 'Standaard herstellen',
     sessionRestore: 'Vorige sessie heropenen bij het starten',
     sessionRestoreDesc: 'Opent de documenttabbladen van de vorige keer opnieuw.',
+    palettePlaceholder: 'Zoek bestanden of typ een opdracht…',
+    paletteSettings: 'Instellingen',
+    paletteNoResults: 'Geen overeenkomende resultaten',
     setLibraryDirMoved: '{n} bestand(en) verplaatst.',
     setLibraryAutoImportDesc:
       'Bewaart een interne kopie van elk geopend bestand; bewerken en opslaan werken op de kopie en het originele bestand blijft onaangetast.',
@@ -7165,6 +7216,9 @@ export const strings = {
     setLibraryDirReset: 'Set semula ke lalai',
     sessionRestore: 'Buka semula sesi terakhir semasa mula',
     sessionRestoreDesc: 'Membuka semula tab dokumen yang terbuka semasa aplikasi terakhir ditutup.',
+    palettePlaceholder: 'Cari fail atau taip arahan…',
+    paletteSettings: 'Tetapan',
+    paletteNoResults: 'Tiada hasil sepadan',
     setLibraryDirMoved: 'Memindahkan {n} fail.',
     setLibraryAutoImportDesc:
       'Menyimpan salinan dalaman setiap fail yang dibuka; suntingan dan penyimpanan ke atas salinan itu dan fail asal kekal tidak diubah.',
@@ -7585,6 +7639,9 @@ export const strings = {
     setLibraryDirReset: 'שחזור ברירת מחדל',
     sessionRestore: 'שחזור ההפעלה הקודמת בעת הפעלת היישום',
     sessionRestoreDesc: 'פותח מחדש את לשוניות המסמכים שהיו פתוחות בסגירה הקודמת.',
+    palettePlaceholder: 'חיפוש קבצים או הקלדת פקודה…',
+    paletteSettings: 'הגדרות',
+    paletteNoResults: 'אין תוצאות תואמות',
     setLibraryDirMoved: 'הועברו {n} קבצים.',
     setLibraryAutoImportDesc:
       'שומר עותק פנימי של כל קובץ שנפתח; עריכה ושמירה מתבצעות על העותק והקובץ המקורי נשאר ללא שינוי.',
@@ -7987,6 +8044,9 @@ export const strings = {
     setLibraryDirReset: 'डिफ़ॉल्ट पर लौटें',
     sessionRestore: 'लॉन्च पर पिछला सेशन पुनः खोलें',
     sessionRestoreDesc: 'पिछली बार बंद करते समय खुले दस्तावेज़ टैब फिर से खोलता है।',
+    palettePlaceholder: 'फ़ाइलें खोजें या कमांड टाइप करें…',
+    paletteSettings: 'सेटिंग्स',
+    paletteNoResults: 'कोई मेल खाता परिणाम नहीं',
     setLibraryDirMoved: '{n} फ़ाइल(ें) खिसकाई गईं।',
     setLibraryAutoImportDesc:
       'खोली गई हर फ़ाइल की आंतरिक कॉपी रखता है; संपादन और सहेजना उसी कॉपी पर होता है और मूल फ़ाइल अछूता रहता है।',
@@ -8401,6 +8461,9 @@ export const strings = {
     setLibraryDirReset: '恢復預設',
     sessionRestore: '啟動時恢復上次工作階段',
     sessionRestoreDesc: '重新開啟上次結束時開啟的文件分頁。',
+    palettePlaceholder: '搜尋檔案，或輸入命令…',
+    paletteSettings: '設定',
+    paletteNoResults: '沒有符合的結果',
     setLibraryDirMoved: '已遷移 {n} 個檔案。',
     setLibraryAutoImportDesc:
       '把開啟的檔案複製一份到軟體內部儲存；之後編輯與儲存都以這份副本為準，原始檔案保持不變。',

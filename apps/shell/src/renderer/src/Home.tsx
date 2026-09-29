@@ -29,6 +29,7 @@ import { useDismissablePopover } from '@genoffice/ui'
 import { fileCountLabel, visiblePageCount } from './counts'
 import { useI18n } from './locale'
 import type { I18n, StringKey } from './locale'
+import { CommandPalette } from './CommandPalette'
 import { SettingsModal } from './SettingsModal'
 import type { SettingsTarget } from './SettingsModal'
 import { skillUpdateDue } from './IntegrationsPane'
@@ -1528,6 +1529,7 @@ export function Home() {
   // bumped when the Jev settings change so the current results are judged again (or the order dropped)
   const [rerankSettingsTick, setRerankSettingsTick] = useState(0)
   const [settingsRequest, setSettingsRequest] = useState<SettingsTarget | null>(null)
+  const [paletteOpen, setPaletteOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   // IME composition: wait for the committed text instead of searching each keystroke
   const composingRef = useRef(false)
@@ -1766,6 +1768,11 @@ export function Home() {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey) return
+      if (event.key === 'k') {
+        event.preventDefault()
+        setPaletteOpen(true)
+        return
+      }
       if (event.key !== 'f' && event.key !== 'p') return
       const input = searchInputRef.current
       if (!input) return
@@ -3449,6 +3456,19 @@ export function Home() {
         <LibraryView />
       ) : (
         renderGlobalContent()
+      )}
+      {paletteOpen && (
+        <CommandPalette
+          onClose={() => setPaletteOpen(false)}
+          onOpenSettings={() => setSettingsRequest({ section: 'general' })}
+          onShowLibrary={() => {
+            setLibraryMode(true)
+            setSelectedFolder(null)
+            setCloudMode(false)
+          }}
+          onShowRecent={() => changeView('recent')}
+          onShowStarred={() => changeView('starred')}
+        />
       )}
       {confirmDelete && (
         <div className="modal-overlay" onClick={() => setConfirmDelete(null)}>
