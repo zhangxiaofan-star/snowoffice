@@ -186,9 +186,22 @@ function ensureToolchainPaths() {
   } catch {
     // no winget packages dir: the toolchain may already be on the user's PATH
   }
-  // also the layout setup-dev.bat installs to
-  const localTools = join(process.env.LOCALAPPDATA ?? '', 'GenOfficeTools', 'mingw64', 'bin')
-  if (existsSync(join(localTools, 'gcc.exe'))) extra.push(localTools)
+  // also the layouts setup-dev.bat installs to: the winget-independent
+  // GenOfficeTools root (its path is recorded in install-root + the
+  // GENOFFICE_TOOLS_ROOT user env var), wherever the user pointed it
+  const toolsRoots = []
+  const localToolsRoot = join(process.env.LOCALAPPDATA ?? '', 'GenOfficeTools')
+  toolsRoots.push(process.env.GENOFFICE_TOOLS_ROOT)
+  try {
+    toolsRoots.push(readFileSync(join(localToolsRoot, 'install-root'), 'utf8').trim())
+  } catch {
+    // no marker file: setup-dev.bat has not run on this machine
+  }
+  for (const root of toolsRoots) {
+    if (!root) continue
+    const mingwBin = join(root, 'mingw64', 'bin')
+    if (existsSync(join(mingwBin, 'gcc.exe'))) extra.push(mingwBin)
+  }
   if (extra.length) {
     process.env.PATH = [...extra, process.env.PATH].join(process.platform === 'win32' ? ';' : ':')
     console.log(`[env] added to PATH: ${extra.join(', ')}`)
