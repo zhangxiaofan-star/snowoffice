@@ -1,11 +1,19 @@
 /**
  * One-command Windows packaging for GenOffice.
  *
- * Usage (from the repo root):
- *   npm run package:win                 full flow: build everything, pack, verify
- *   node scripts/package-win.mjs --skip-build   reuse the existing apps/ * /out and cli dist
- *   node scripts/package-win.mjs --sidecar      force a sidecar rebuild even if one is staged
- *   node scripts/package-win.mjs --skip-smoke   don't launch the packed app at the end
+ * Usage (from the repo root, or double-click package.bat):
+ *   npm run package:win                    full flow: build everything, pack, verify
+ *   node scripts/package-win.mjs --version 1.2.3   set the app version, then package
+ *   node scripts/package-win.mjs --bump patch      bump patch (0.10.0 -> 0.10.1), then package
+ *   node scripts/package-win.mjs --bump minor      bump minor (0.10.0 -> 0.11.0), then package
+ *   node scripts/package-win.mjs --skip-build      reuse the existing apps/ * /out and cli dist
+ *   node scripts/package-win.mjs --sidecar         force a sidecar rebuild even if one is staged
+ *   node scripts/package-win.mjs --skip-smoke      don't launch the packed app at the end
+ *
+ * The version lives in apps/shell/package.json ("version"); it names the
+ * installer (GenOffice Setup <version>.exe), the installed app, and is baked
+ * into the bundled genoffice CLI automatically by electron-builder's
+ * beforePack hook.
  *
  * Why this script exists (three packaging pitfalls it works around):
  *
@@ -72,10 +80,68 @@ const SIDECAR_STAGED = join(
   'xlsx-sidecar.exe',
 )
 
-const args = new Set(process.argv.slice(2))
-const skipBuild = args.has('--skip-build')
-const forceSidecar = args.has('--sidecar')
-const skipSmoke = args.has('--skip-smoke')
+const args = process.argv.slice(2)
+const flags = new Set(args.filter((a) => a.startsWith('--')))
+const skipBuild = flags.has('--skip-build')
+const forceSidecar = flags.has('--sidecar')
+const skipSmoke = flags.has('--skip-smoke')
+
+/** value of `--flag value` / `--flag=value` from the argv list */
+function flagValue(flag) {
+  const inline = args.find((a) => a.startsWith(`${flag}=`))
+  if (inline) return inline.slice(flag.length + 1)
+  const at = args.indexOf(flag)
+  if (at !== -1 && args[at + 1] && !args[at + 1].startsWith('--')) return args[at + 1]
+  return null
+}
+
+const SEMVER_RE = /^\d+\.\d+\.\d+$/
+const explicitVersion = flagValue('--version')
+const bumpPart = flagValue('--bump')
+if (explicitVersion && bumpPart) {
+  console.error('Use either --version <x.y.z> or --bump <patch|minor|major>, not both.')
+  process.exit(1)
+}
+if (bumpPart && !['patch', 'minor', 'major'].includes(bumpPart)) {
+  console.error(`--bump must be patch, minor or major (got "${bumpPart}")`)
+  process.exit(1)
+}
+if (explicitVersion && !SEMVER_RE.test(explicitVersion)) {
+  console.error(`--version must be x.y.z (got "${explicitVersion}")`)
+  process.exit(1)
+}
+
+/**
+ * Apply --version / --bump to apps/shell/package.json. This field drives the
+ * installer name, the installed app version, and (via electron-builder's
+ * beforePack hook) the version baked into the bundled genoffice CLI.
+ */
+function applyVersionRequest() {
+  if (!explicitVersion && !bumpPart) return null
+  const pkgPath = join(SHELL, 'package.json')
+  const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'))
+  const current = pkg.version
+  let next
+  if (explicitVersion) {
+    next = explicitVersion
+  } else {
+    const [maj, min, pat] = current.split('.').map(Number)
+    next =
+      bumpPart === 'major'
+        ? `${maj + 1}.0.0`
+        : bumpPart === 'minor'
+          ? `${maj}.${min + 1}.0`
+          : `${maj}.${min}.${pat + 1}`
+  }
+  if (next === current) {
+    console.log(`[version] already at ${current}`)
+    return current
+  }
+  pkg.version = next
+  writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n')
+  console.log(`[version] ${current} -> ${next} (apps/shell/package.json)`)
+  return next
+}
 
 /** run a command, streaming output; hard-fail the script on non-zero exit */
 function run(cmd, opts = {}) {
@@ -275,6 +341,7 @@ async function main() {
   process.env.ELECTRON_BUILDER_BINARIES_MIRROR ??=
     'https://npmmirror.com/mirrors/electron-builder-binaries/'
 
+  const version = applyVersionRequest()
   const cargoAvailable = ensureToolchainPaths()
   ensureSidecar(cargoAvailable)
 
@@ -328,7 +395,9 @@ async function main() {
     }
   }
 
-  console.log(`\n=== DONE ===\nInstaller: ${installer}\nUnpacked:  ${UNPACKED}`)
+  console.log(
+    `\n=== DONE ===\nVersion:   ${shellPkg.version}\nInstaller: ${installer}\nUnpacked:  ${UNPACKED}`,
+  )
 }
 
 main()
