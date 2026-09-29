@@ -228,6 +228,36 @@ function LibraryDirRow() {
   )
 }
 
+/** General-pane row: reopen the previous session's file tabs on launch. */
+function SessionRestoreRow() {
+  const { t } = useI18n()
+  const [on, setOn] = useState<boolean | null>(null)
+  useEffect(() => {
+    void window.aiOffice.getSessionRestore().then(setOn)
+  }, [])
+  const toggle = () => {
+    const next = !(on ?? true)
+    setOn(next)
+    void window.aiOffice.setSessionRestore(next).then((stored) => setOn(stored))
+  }
+  return (
+    <div className="set-field">
+      <div className="set-field-text">
+        <div className="set-field-stack">
+          <div className="set-field-label">{t('sessionRestore')}</div>
+          <div className="set-field-desc">{t('sessionRestoreDesc')}</div>
+        </div>
+      </div>
+      <button
+        className="set-switch"
+        role="switch"
+        aria-checked={on ?? true}
+        aria-label={t('sessionRestore')}
+        onClick={toggle}
+      />
+    </div>
+  )
+}
 export type SectionId = 'account' | 'aiModel' | 'aiMedia' | 'general' | 'integrations' | 'about'
 
 const SECTIONS: readonly { id: SectionId; labelKey: StringKey }[] = [
@@ -1583,6 +1613,7 @@ export function SettingsModal({
                 </div>
                 <LibraryAutoImportRow />
                 <LibraryDirRow />
+                <SessionRestoreRow />
                 {AI_ENABLED && (
                   <>
                     <div className="set-field">

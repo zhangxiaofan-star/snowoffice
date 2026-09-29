@@ -26,6 +26,7 @@ import {
 } from 'electron'
 import type { MenuItemConstructorOptions, NativeImage, WebContents } from 'electron'
 import { atomicCopyFile, atomicWriteFile } from './atomic-write'
+import { writeJsonAtomic } from '@genoffice/electron-utils'
 import { tabStripOverlay } from './title-bar-overlay'
 import menuDocxIcon1x from './assets/menu-docx.png?asset'
 import menuDocxIcon2x from './assets/menu-docx@2x.png?asset'
@@ -548,6 +549,82 @@ function normalizedLibraryDirTarget(dir: string): string {
 
 function libraryAutoImportEnabled(): boolean {
   return readAppSettings(APP_SETTINGS_PATH()).libraryAutoImport !== false
+}
+
+// ---- session restore ----
+// The strip's file tabs are persisted to userData/session.json on every change
+// (and at quit) so the next launch can reopen them. Only tabs backed by a file
+// are recorded; argv-provided files always win over the saved session.
+
+const SESSION_PATH = () => join(app.getPath('userData'), 'session.json')
+
+function sessionRestoreEnabled(): boolean {
+  return readAppSettings(APP_SETTINGS_PATH()).sessionRestore !== false
+}
+
+function persistSession(): void {
+  if (!tabManager || !sessionRestoreEnabled()) return
+  const tabs = tabManager
+    .list()
+    .filter((t) => typeof t.filePath === 'string' && t.filePath)
+    .map((t) => ({ filePath: t.filePath as string, kind: t.kind }))
+  const activePath = tabManager.list().find((t) => t.active && t.filePath)?.filePath ?? null
+  try {
+    writeJsonAtomic(SESSION_PATH(), { updatedAt: Date.now(), tabs, activePath })
+  } catch (err) {
+    console.warn('[session] persist failed:', err instanceof Error ? err.message : err)
+  }
+}
+
+function readSessionFile(): { tabs: Array<{ filePath: string; kind: string }>; activePath: string | null } {
+  try {
+    const raw: unknown = JSON.parse(readFileSync(SESSION_PATH(), 'utf8'))
+    if (raw && typeof raw === 'object' && Array.isArray((raw as { tabs?: unknown }).tabs)) {
+      const tabs = ((raw as { tabs: unknown }).tabs as unknown[]).filter(
+        (t): t is { filePath: string; kind: string } =>
+          !!t &&
+          typeof (t as { filePath?: unknown }).filePath === 'string' &&
+          typeof (t as { kind?: unknown }).kind === 'string',
+      )
+      return {
+        tabs,
+        activePath:
+          typeof (raw as { activePath?: unknown }).activePath === 'string'
+            ? ((raw as { activePath: string }).activePath)
+            : null,
+      }
+    }
+  } catch {
+    // missing or corrupt session: nothing to restore
+  }
+  return { tabs: [], activePath: null }
+}
+
+function readSessionPaths(): string[] {
+  const seen = new Set<string>()
+  const paths: string[] = []
+  for (const tab of readSessionFile().tabs) {
+    const key = process.platform === 'win32' ? tab.filePath.toLowerCase() : tab.filePath
+    if (seen.has(key)) continue
+    seen.add(key)
+    paths.push(tab.filePath)
+  }
+  return paths
+}
+
+function readSessionActivePath(): string | null {
+  return readSessionFile().activePath
+}
+
+/** focus the restored tab matching the session's active path, if any */
+function activateSessionTab(path: string | null): void {
+  if (!path || !tabManager) return
+  const key = process.platform === 'win32' ? path.toLowerCase() : path
+  const summary = tabManager.list().find((t) => {
+    if (!t.filePath) return false
+    return (process.platform === 'win32' ? t.filePath.toLowerCase() : t.filePath) === key
+  })
+  if (summary) tabManager.activateTab(summary.id)
 }
 
 const OPEN_DOCUMENTS_PATH = () => join(app.getPath('userData'), OPEN_DOCUMENTS_FILE)
@@ -3136,6 +3213,7 @@ function createShellWindow(): void {
     () => {
       win.webContents.send(TABS_CHANNELS.changed, manager.list())
       publishOpenDocumentsIfOwner([...manager.openFilePaths(), ...detachedFilePaths()])
+      persistSession()
     },
     applyMenuFor,
     // no extension: these tabs have no file on disk yet; the title becomes the
@@ -4066,6 +4144,14 @@ function registerHomeIpc(): void {
   ipcMain.handle(HOME_CHANNELS.setLibraryAutoImport, (_event, on: unknown): boolean => {
     const enabled = on === true
     writeAppSetting(APP_SETTINGS_PATH(), 'libraryAutoImport', enabled)
+    return enabled
+  })
+
+  ipcMain.handle(HOME_CHANNELS.getSessionRestore, (): boolean => sessionRestoreEnabled())
+
+  ipcMain.handle(HOME_CHANNELS.setSessionRestore, (_event, on: unknown): boolean => {
+    const enabled = on === true
+    writeAppSetting(APP_SETTINGS_PATH(), 'sessionRestore', enabled)
     return enabled
   })
 
@@ -6010,8 +6096,15 @@ app.whenReady().then(async () => {
     })
   }
 
+  const hadArgvFiles = pendingLaunchPaths.length > 0
   openLaunchPaths(pendingLaunchPaths)
   pendingLaunchPaths = []
+  // session restore: with no files requested on the command line, reopen the
+  // tabs from the previous run (argv files always win over the session)
+  if (!hadArgvFiles && sessionRestoreEnabled()) {
+    for (const path of readSessionPaths()) openDocumentPath(path)
+    activateSessionTab(readSessionActivePath())
+  }
   for (const recoverAs of pendingUnsavedNewRecoveries()) void newSheetTab(recoverAs)
 
   startControlServer(
@@ -6044,6 +6137,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', () => {
+  persistSession()
   // No close prompt may fall through to "Save" during shutdown
   markSheetsShuttingDown()
   stopSheetsSidecar()

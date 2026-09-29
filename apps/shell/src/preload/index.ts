@@ -202,6 +202,12 @@ const homeApi: HomeApi = {
     const r: unknown = await ipcRenderer.invoke(HOME_CHANNELS.pickLibraryDir, current)
     return typeof r === 'string' ? r : null
   },
+  async getSessionRestore() {
+    return (await ipcRenderer.invoke(HOME_CHANNELS.getSessionRestore)) as boolean
+  },
+  async setSessionRestore(on) {
+    return (await ipcRenderer.invoke(HOME_CHANNELS.setSessionRestore, on)) as boolean
+  },
   async revealPath(path) {
     if (typeof path !== 'string' || !path) throw new Error('Invalid path.')
     await ipcRenderer.invoke(HOME_CHANNELS.revealPath, path)

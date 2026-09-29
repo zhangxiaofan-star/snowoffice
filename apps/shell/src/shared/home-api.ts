@@ -231,6 +231,9 @@ export interface HomeApi {
   setLibraryDir(dir: string): Promise<{ dir: string; moved: number; failed: number }>
   /** OS directory picker seeded with `current`; null when cancelled */
   pickLibraryDir(current: string): Promise<string | null>
+  /** reopen the previous session's file tabs on launch (default on) */
+  getSessionRestore(): Promise<boolean>
+  setSessionRestore(on: boolean): Promise<boolean>
   /** reveal the file in Finder / Explorer */
   revealPath(path: string): Promise<void>
   /** rename the file on disk (same directory) and update the recent list */
@@ -528,6 +531,8 @@ export const HOME_CHANNELS = {
   getLibraryDir: 'home:get-library-dir',
   setLibraryDir: 'home:set-library-dir',
   pickLibraryDir: 'home:pick-library-dir',
+  getSessionRestore: 'home:get-session-restore',
+  setSessionRestore: 'home:set-session-restore',
   revealPath: 'home:reveal-path',
   renameFile: 'home:rename-file',
   duplicateFile: 'home:duplicate-file',
