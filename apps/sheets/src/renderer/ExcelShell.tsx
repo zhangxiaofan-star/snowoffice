@@ -30,6 +30,7 @@ import {
 } from './ribbon-icons'
 
 import { ColorDropdown } from './ColorDropdown'
+import { FindReplaceProDialog } from './FindReplaceProDialog'
 import { FormulaFavoritesDialog } from './FormulaFavoritesDialog'
 import { FormatCellsDialog } from './FormatCellsDialog'
 import { AllowEditRangesDialog } from './AllowEditRangesDialog'
@@ -313,6 +314,8 @@ interface ExcelShellProps {
   readonly calcManual: boolean
   /// Goal Seek solve; rejects with a user-facing Error message.
   readonly onGoalSeek: (setCell: string, toValue: number, byCell: string) => Promise<GoalSeekResult>
+  /** workbook facade for the advanced find & replace dialog */
+  readonly univerRef: { readonly current: unknown }
 }
 
 export interface PageLayoutEcho {
@@ -411,6 +414,7 @@ export function ExcelShell({
   pageLayout,
   calcManual,
   onGoalSeek,
+  univerRef,
 }: ExcelShellProps): React.JSX.Element {
   const { t } = useI18n()
   const [activeTab, setActiveTab] = useState<RibbonTab>('Home')
@@ -432,6 +436,7 @@ export function ExcelShell({
   const [showDedupeDialog, setShowDedupeDialog] = useState(false)
   const [showFormulaFavorites, setShowFormulaFavorites] = useState(false)
   const [showAffixDialog, setShowAffixDialog] = useState(false)
+  const [showFindReplacePro, setShowFindReplacePro] = useState(false)
   const [showNameManager, setShowNameManager] = useState(false)
   const [showPivotDialog, setShowPivotDialog] = useState(false)
   const [pivotEditSeed, setPivotEditSeed] = useState<PivotEditSeed | null>(null)
@@ -483,6 +488,7 @@ export function ExcelShell({
     else if (command === 'remove-duplicates-open') setShowDedupeDialog(true)
     else if (command === 'formula-favorites-open') setShowFormulaFavorites(true)
     else if (command === 'colclean-affix-open') setShowAffixDialog(true)
+    else if (command === 'frpro-open') setShowFindReplacePro(true)
     else if (command === 'name-manager-open') setShowNameManager(true)
     else if (command === 'pivot-open') setShowPivotDialog(true)
     else if (command === 'pivot-edit') setPivotEditSeed(onGetPivotEditSeed())
@@ -908,6 +914,9 @@ export function ExcelShell({
       )}
       {showAffixDialog && (
         <AffixDialog onCommand={onCommand} onClose={() => setShowAffixDialog(false)} />
+      )}
+      {showFindReplacePro && (
+        <FindReplaceProDialog univerRef={univerRef} onClose={() => setShowFindReplacePro(false)} />
       )}
       {showNameManager &&
         (() => {
@@ -2414,6 +2423,13 @@ function Ribbon({
             detail={t('appInSelection')}
             symbol="↧"
             onClick={() => onCommand('selection-export')}
+          />
+          <RibbonButton
+            large
+            label={t('frproTitle')}
+            detail={t('frproSubtitle')}
+            symbol="⌕"
+            onClick={() => onCommand('frpro-open')}
           />
           {largeMenu(t('appColClean'), '✧', t('appColCleanTitle'), [
             { value: 'colclean-fill-down', label: t('appColCleanFillDown') },

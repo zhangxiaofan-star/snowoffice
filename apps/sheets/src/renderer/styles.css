@@ -5950,3 +5950,66 @@ body > div:has([data-u-comp='find-replace-dialog']) {
 .dialog-mini-btn.danger {
   color: var(--danger);
 }
+
+/* advanced find & replace */
+.frpro-dialog {
+  width: min(560px, 92vw);
+}
+
+.frpro-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.frpro-row input {
+  flex: 1;
+}
+
+.frpro-scope {
+  display: flex;
+  gap: 14px;
+  margin: 6px 0;
+}
+
+.frpro-hits {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.frpro-hits li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 2px;
+  font-size: 12px;
+}
+
+.frpro-hit-where {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.frpro-hit-before {
+  text-decoration: line-through;
+  opacity: 0.7;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.frpro-hit-after {
+  font-weight: 600;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.frpro-more {
+  color: var(--text-secondary);
+}

@@ -4602,6 +4602,7 @@ export function App({
         sheetHasContent={sheetHasContent}
         pageLayout={activePageLayout}
         calcManual={calcManual}
+        univerRef={univerRef}
         onGoalSeek={(setCell, toValue, byCell) => {
           const runtime = univerRef.current
           if (!runtime) return Promise.reject(new Error(t('appWorkbookNotReady')))
