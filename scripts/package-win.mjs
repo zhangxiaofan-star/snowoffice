@@ -345,7 +345,7 @@ function asarIsComplete(path) {
 }
 
 /** repack apps/shell/out (+ the ws runtime dep) into a fresh app.asar */
-function repackAppAsar(dest) {
+async function repackAppAsar(dest) {
   const asar = require('@electron/asar')
   const shellPkg = JSON.parse(readFileSync(join(SHELL, 'package.json'), 'utf8'))
   const staging = join(RELEASE, 'asar-staging')
@@ -366,7 +366,7 @@ function repackAppAsar(dest) {
       private: true,
     }),
   )
-  asar.createPackage(staging, dest)
+  await asar.createPackage(staging, dest)
   rmSync(staging, { recursive: true, force: true })
 }
 
@@ -461,7 +461,7 @@ async function main() {
     console.log('[asar] packed app.asar is complete')
   } else {
     console.log('[asar] truncation detected — repacking from apps/shell/out ...')
-    repackAppAsar(asarPath)
+    await repackAppAsar(asarPath)
     if (!asarIsComplete(asarPath)) {
       console.error('[asar] re-packed asar still incomplete — aborting.')
       process.exit(1)
