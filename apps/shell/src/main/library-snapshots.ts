@@ -1,7 +1,9 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { basename, join } from 'node:path'
+import { readFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import { parseFileToText } from '@genoffice/file-parse'
+import { parseDocx, type Block, type Run } from '@genoffice/docx-engine'
 import { pathKey } from './library'
 import type { LibrarySnapshotDiffRow } from '../shared/home-api'
 
@@ -340,6 +342,38 @@ function alignRows(ops: RawOp[]): SnapshotDiffRow[] {
  * Compare a snapshot against the current copy. Text documents get a
  * side-by-side line diff; binary formats get a size + hash comparison.
  */
+/**
+ * Style-annotated text of a docx: every run carries a <...> marker listing its
+ * non-default formatting (b=bold, i=italic, u=underline, s=strike, cRRGGBB=color,
+ * zNN=size in half-points, hNAME=highlight). Style-only changes therefore show
+ * up in the paragraph diff, not just wording changes.
+ */
+async function styledDocxText(bytes: Uint8Array): Promise<string> {
+  const parsed = await parseDocx(bytes)
+  const lines: string[] = []
+  for (const block of parsed.blocks) {
+    if (block.hidden) continue
+    const runs: Run[] | undefined = block.runs
+    if (!runs || runs.length === 0) {
+      lines.push(block.previewText ?? block.label ?? `[${block.type}]`)
+      continue
+    }
+    let line = ''
+    for (const run of runs) {
+      const sig: string[] = []
+      if (run.bold) sig.push('b')
+      if (run.italic) sig.push('i')
+      if (run.underline) sig.push('u')
+      if (run.strike) sig.push('s')
+      if (run.color && run.color !== 'auto') sig.push(`c${run.color}`)
+      if (run.sizeHalfPoints) sig.push(`z${run.sizeHalfPoints}`)
+      if (run.highlight) sig.push(`h${run.highlight}`)
+      line += sig.length > 0 ? `<${sig.join(',')}>${run.text}` : run.text
+    }
+    lines.push(line)
+  }
+  return lines.join('\n')
+}
 export async function diffLibrarySnapshot(
   snapshotsRoot: string,
   entry: { originalPath: string; libPath: string },
@@ -367,18 +401,33 @@ export async function diffLibrarySnapshot(
   const ext = extensionOf(entry.libPath)
   const currentBytes = statSync(entry.libPath).size
 
-  // Office/PDF documents: paragraph-level content diff via the text extractor
+  // Office/PDF documents: paragraph-level content diff via the text extractor.
+  // For .docx the text carries <formatting> markers so style-only changes diff too.
   if (DOC_EXTS.has(ext)) {
     try {
       const snapPath: string = snapshotPath
       const curPath: string = entry.libPath
-      const snapshotParsed = await parseFileToText(snapPath)
-      const currentParsed = await parseFileToText(curPath)
-      if (snapshotParsed.ok && currentParsed.ok) {
+      let snapshotText: string | null = null
+      let currentText: string | null = null
+      if (ext === 'docx') {
+        try {
+          snapshotText = await styledDocxText(await readFile(snapPath))
+          currentText = await styledDocxText(await readFile(curPath))
+        } catch {
+          // malformed docx: fall through to the plain extractor
+        }
+      }
+      if (snapshotText === null || currentText === null) {
+        const snapshotParsed = await parseFileToText(snapPath)
+        const currentParsed = await parseFileToText(curPath)
+        snapshotText = snapshotParsed.ok ? (snapshotParsed.text ?? '') : null
+        currentText = currentParsed.ok ? (currentParsed.text ?? '') : null
+      }
+      if (snapshotText !== null && currentText !== null) {
         const paragraphs = (text: string) =>
           text.replace(/\r\n/g, '\n').split('\n').map((l) => l.trimEnd()).filter((l, idx, all) => l !== '' || (idx > 0 && all[idx - 1] !== ''))
-        const a = paragraphs(snapshotParsed.text ?? '')
-        const b = paragraphs(currentParsed.text ?? '')
+        const a = paragraphs(snapshotText)
+        const b = paragraphs(currentText)
         const { ops, truncated } =
           a.length <= LCS_CAP && b.length <= LCS_CAP
             ? lcsOps(a, b)
