@@ -114,11 +114,19 @@ export type SnapshotDiffCell = {
   text: string
 } | null
 
+export interface SnapshotSeg {
+  t: 'same' | 'del' | 'add'
+  text: string
+}
+
 export interface SnapshotDiffRow {
   /** old-version cell (null when the line is new) */
   left: SnapshotDiffCell
   /** current-version cell (null when the line was added) */
   right: SnapshotDiffCell
+  /** inline word-level segments when both sides exist and differ */
+  leftSegs?: SnapshotSeg[]
+  rightSegs?: SnapshotSeg[]
 }
 
 export type SnapshotDiffHunk =
@@ -212,6 +220,64 @@ function coarseOps(a: string[], b: string[]): RawOp[] {
   ops.push(...b.map((text) => ({ kind: 'add' as const, text })))
   return ops
 }
+const INLINE_CAP = 1200
+
+/** tokenize: latin/digit runs stay whole, CJK and punctuation split per char */
+function tokenize(text: string): string[] {
+  return text.match(/[A-Za-z0-9]+|\s+|[^A-Za-z0-9\s]/gu) ?? []
+}
+
+function pushSeg(list: SnapshotSeg[], t: SnapshotSeg['t'], text: string): void {
+  const last = list[list.length - 1]
+  if (last && last.t === t) last.text += text
+  else list.push({ t, text })
+}
+
+/** word/char-level segments: old side marks dels, new side marks adds */
+function inlineSegs(
+  leftText: string,
+  rightText: string,
+): { leftSegs: SnapshotSeg[]; rightSegs: SnapshotSeg[] } | undefined {
+  const a = tokenize(leftText)
+  const b = tokenize(rightText)
+  if (a.length > 400 || b.length > 400) return undefined
+  const dp: number[][] = Array.from({ length: a.length + 1 }, () =>
+    new Array(b.length + 1).fill(0),
+  )
+  for (let i = a.length - 1; i >= 0; i--) {
+    for (let j = b.length - 1; j >= 0; j--) {
+      dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1])
+    }
+  }
+  const leftSegs: SnapshotSeg[] = []
+  const rightSegs: SnapshotSeg[] = []
+  let i = 0
+  let j = 0
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) {
+      pushSeg(leftSegs, 'same', a[i])
+      pushSeg(rightSegs, 'same', b[j])
+      i++
+      j++
+    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+      pushSeg(leftSegs, 'del', a[i])
+      i++
+    } else {
+      pushSeg(rightSegs, 'add', b[j])
+      j++
+    }
+  }
+  while (i < a.length) {
+    pushSeg(leftSegs, 'del', a[i])
+    i++
+  }
+  while (j < b.length) {
+    pushSeg(rightSegs, 'add', b[j])
+    j++
+  }
+  return { leftSegs, rightSegs }
+}
+
 function alignRows(ops: RawOp[]): SnapshotDiffRow[] {
   const rows: SnapshotDiffRow[] = []
   let leftN = 0
@@ -246,9 +312,19 @@ function alignRows(ops: RawOp[]): SnapshotDiffRow[] {
         const rightText = adds[k]
         if (leftText !== undefined) leftN++
         if (rightText !== undefined) rightN++
+        const inline =
+          leftText !== undefined &&
+          rightText !== undefined &&
+          leftText !== rightText &&
+          leftText.length <= INLINE_CAP &&
+          rightText.length <= INLINE_CAP
+            ? inlineSegs(leftText, rightText)
+            : undefined
         rows.push({
           left: leftText !== undefined ? { n: leftN, text: leftText } : null,
           right: rightText !== undefined ? { n: rightN, text: rightText } : null,
+          leftSegs: inline?.leftSegs,
+          rightSegs: inline?.rightSegs,
         })
       }
       continue

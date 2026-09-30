@@ -2669,3 +2669,14 @@ body.vib .home {
 .recent-table.lib-table .selection-action {
   white-space: nowrap;
 }
+
+/* 段内字词级差异高亮（word-diff） */
+.snap-seg-del {
+  background: color-mix(in srgb, var(--danger) 28%, transparent);
+  border-radius: 3px;
+}
+
+.snap-seg-add {
+  background: color-mix(in srgb, var(--accent) 32%, transparent);
+  border-radius: 3px;
+}

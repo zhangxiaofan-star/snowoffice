@@ -106,9 +106,17 @@ export interface LibrarySnapshotInfo {
 
 export type LibrarySnapshotCell = { n: number; text: string } | null
 
+export interface LibrarySnapshotSeg {
+  t: 'same' | 'del' | 'add'
+  text: string
+}
+
 export interface LibrarySnapshotDiffRow {
   left: LibrarySnapshotCell
   right: LibrarySnapshotCell
+  /** inline word-level segments when both sides exist and differ */
+  leftSegs?: LibrarySnapshotSeg[]
+  rightSegs?: LibrarySnapshotSeg[]
 }
 
 export interface LibrarySnapshotDiff {

@@ -7,6 +7,7 @@ import type {
   LibrarySnapshotDiff,
   LibrarySnapshotInfo,
   LibrarySnapshotDiffRow,
+  LibrarySnapshotSeg,
 } from '../../shared/home-api'
 
 export type SnapshotDiffView =
@@ -153,11 +154,33 @@ export function LibrarySnapshotsModal({
                         <div key={i} className={`snap-diff-grid${changed ? ' snap-diff-changed' : ''}`}>
                           <div className={`snap-diff-side${leftClass}`}>
                             <span className="snap-diff-n">{row.left?.n ?? ''}</span>
-                            <span className="snap-diff-text">{row.left?.text ?? ''}</span>
+                            <span className="snap-diff-text">
+                              {row.leftSegs
+                                ? row.leftSegs.map((seg, si) => (
+                                    <span
+                                      key={si}
+                                      className={seg.t === 'del' ? 'snap-seg-del' : undefined}
+                                    >
+                                      {seg.text}
+                                    </span>
+                                  ))
+                                : row.left?.text}
+                            </span>
                           </div>
                           <div className={`snap-diff-side${rightClass}`}>
                             <span className="snap-diff-n">{row.right?.n ?? ''}</span>
-                            <span className="snap-diff-text">{row.right?.text ?? ''}</span>
+                            <span className="snap-diff-text">
+                              {row.rightSegs
+                                ? row.rightSegs.map((seg, si) => (
+                                    <span
+                                      key={si}
+                                      className={seg.t === 'add' ? 'snap-seg-add' : undefined}
+                                    >
+                                      {seg.text}
+                                    </span>
+                                  ))
+                                : row.right?.text}
+                            </span>
                           </div>
                         </div>
                       )
