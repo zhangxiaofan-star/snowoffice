@@ -1103,7 +1103,7 @@ function LibraryView() {
         {entries === null ? null : entries.length === 0 ? (
           <p className="empty-hint">{t('libraryEmpty')}</p>
         ) : (
-          <div className="recent-table">
+          <div className="recent-table lib-table">
             <div className="recent-columns">
               <span className="col-name">{t('colName')}</span>
               <span className="col-path">{t('libraryOriginalCol')}</span>

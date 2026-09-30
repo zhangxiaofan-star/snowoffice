@@ -1,7 +1,7 @@
 {
   "name": "@genoffice/shell",
   "productName": "SnowOffice",
-  "version": "0.15.0",
+  "version": "0.15.1",
   "license": "Apache-2.0",
   "homepage": "https://github.com/genspark-ai/genoffice",
   "private": true,

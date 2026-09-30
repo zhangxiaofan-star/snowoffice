@@ -2472,8 +2472,9 @@ body.vib .home {
 }
 
 /* ---- 历史版本弹窗：左列表 + 右对比（宽版双栏） ---- */
-.library-snapshots-modal {
+.modal.library-snapshots-modal {
   width: min(1200px, 96vw);
+  max-width: min(1200px, 96vw);
   height: min(720px, 90vh);
   display: flex;
   flex-direction: column;
@@ -2653,4 +2654,18 @@ body.vib .home {
 
 .snap-diff-grid.snap-diff-changed .snap-diff-text {
   font-weight: 600;
+}
+
+/* 文档库表格：自己的列模板（无复选框列，操作列加宽），行按钮不再竖排 */
+.recent-table.lib-table .recent-columns,
+.recent-table.lib-table .recent-item {
+  grid-template-columns: 24px minmax(0, 1fr) minmax(0, 1.3fr) 96px 72px minmax(140px, auto);
+}
+
+.recent-table.lib-table .recent-actions {
+  white-space: nowrap;
+}
+
+.recent-table.lib-table .selection-action {
+  white-space: nowrap;
 }
