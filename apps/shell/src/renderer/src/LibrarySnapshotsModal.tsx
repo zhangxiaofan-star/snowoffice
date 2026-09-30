@@ -1,7 +1,13 @@
 import { useState } from 'react'
 import { useI18n } from './locale'
 import type { I18n } from './locale'
-import type { LibraryEntryInfo, LibrarySnapshotDiff, LibrarySnapshotInfo } from '../../shared/home-api'
+import type {
+  LibraryEntryInfo,
+  LibrarySnapshotCell,
+  LibrarySnapshotDiff,
+  LibrarySnapshotInfo,
+  LibrarySnapshotDiffRow,
+} from '../../shared/home-api'
 
 export type SnapshotDiffView =
   | { state: 'loading' }
@@ -25,10 +31,30 @@ function formatSize(bytes: number): string {
   return `${Math.max(1, Math.round(bytes / 1024))} KB`
 }
 
+/** one aligned side-by-side row: red-tinted old cell, green-tinted new cell */
+function DiffRow({ row }: { readonly row: LibrarySnapshotDiffRow }): React.JSX.Element {
+  const changed =
+    row.left !== null && row.right !== null && row.left.text !== row.right.text
+  const leftClass = row.left === null ? ' snap-diff-empty' : changed ? ' snap-diff-del' : ''
+  const rightClass = row.right === null ? ' snap-diff-empty' : changed ? ' snap-diff-add' : ''
+  return (
+    <div className="snap-diff-grid">
+      <div className={`snap-diff-side${leftClass}`}>
+        <span className="snap-diff-n">{row.left?.n ?? ''}</span>
+        <span className="snap-diff-text">{row.left?.text ?? ''}</span>
+      </div>
+      <div className={`snap-diff-side${rightClass}`}>
+        <span className="snap-diff-n">{row.right?.n ?? ''}</span>
+        <span className="snap-diff-text">{row.right?.text ?? ''}</span>
+      </div>
+    </div>
+  )
+}
+
 /**
  * Version-history modal for one library copy. Each version can be expanded
- * into a git-style line diff against the current copy (text documents) or a
- * size/identity comparison (binary formats).
+ * into a git-style side-by-side diff against the current copy (text
+ * documents) or a size/identity comparison (binary formats).
  */
 export function LibrarySnapshotsModal({
   entry,
@@ -99,7 +125,16 @@ export function LibrarySnapshotsModal({
                         {diff.diff.identical ? ' — ' + t('librarySnapshotSame') : ''}
                       </p>
                     ) : (
-                      <div>
+                      <div className="snap-diff-table">
+                        <div className="snap-diff-header">
+                          <span className="snap-diff-side">{t('librarySnapshotOldCol')}</span>
+                          <span className="snap-diff-side">{t('librarySnapshotNewCol')}</span>
+                        </div>
+                        <div className="snap-diff-body">
+                          {diff.diff.rows?.map((row, i) => (
+                            <DiffRow key={i} row={row} />
+                          ))}
+                        </div>
                         <p className="snap-diff-summary">
                           <span className="snap-diff-adds">+{diff.diff.adds ?? 0}</span>{' '}
                           <span className="snap-diff-dels">−{diff.diff.dels ?? 0}</span>
@@ -107,19 +142,6 @@ export function LibrarySnapshotsModal({
                             <span className="snap-diff-trunc">{t('librarySnapshotMore')}</span>
                           )}
                         </p>
-                        <div className="snap-diff-lines">
-                          {diff.diff.lines?.map((line, i) => (
-                            <div key={i} className={`snap-diff-line snap-diff-${line.type}`}>
-                              <span className="snap-diff-sign">
-                                {line.type === 'add' ? '+' : line.type === 'del' ? '−' : ' '}
-                              </span>
-                              <span>{line.text}</span>
-                            </div>
-                          ))}
-                          {diff.diff.truncated && (
-                            <p className="snap-diff-trunc">{t('librarySnapshotMore')}</p>
-                          )}
-                        </div>
                       </div>
                     )}
                   </div>

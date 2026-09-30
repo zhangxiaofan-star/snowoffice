@@ -1,6 +1,6 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs'
-import { createHash } from 'node:crypto'
 import { basename, join } from 'node:path'
+import { createHash } from 'node:crypto'
 import { pathKey } from './library'
 
 /**
@@ -98,20 +98,32 @@ function pruneSnapshots(dir: string): void {
   }
 }
 
+// ---- snapshot diff (git-style, side-by-side) --------------------------------
+
 const TEXT_EXTENSIONS = new Set(['csv', 'tsv', 'md', 'markdown', 'html', 'htm', 'txt', 'json', 'svg', 'xml'])
 const DIFF_MAX_BYTES = 2 * 1024 * 1024
-const DIFF_MAX_LINES = 400
+const DIFF_MAX_ROWS = 400
+const LCS_CAP = 1500
 
-export interface SnapshotDiffLine {
-  type: 'add' | 'del' | 'ctx'
+export type SnapshotDiffCell = {
+  /** 1-based line number on its own side */
+  n: number
   text: string
+} | null
+
+export interface SnapshotDiffRow {
+  /** old-version cell (null when the line is new) */
+  left: SnapshotDiffCell
+  /** current-version cell (null when the line was added) */
+  right: SnapshotDiffCell
 }
 
 export interface SnapshotDiff {
   kind: 'text' | 'binary'
+  /** side-by-side aligned rows: old left, current right */
+  rows?: SnapshotDiffRow[]
   adds?: number
   dels?: number
-  lines?: SnapshotDiffLine[]
   truncated?: boolean
   snapshotBytes?: number
   currentBytes?: number
@@ -131,15 +143,21 @@ function hashFile(path: string): string | null {
   }
 }
 
-/** classic LCS line diff; capped so huge files fall back to coarse counts */
-function lcsDiff(a: string[], b: string[]): { lines: SnapshotDiffLine[]; adds: number; dels: number; truncated: boolean } {
+interface RawOp {
+  kind: 'same' | 'del' | 'add'
+  text: string
+}
+
+/** classic LCS producing raw ops; capped so huge inputs fall back to coarse output */
+function lcsOps(a: string[], b: string[]): { ops: RawOp[]; truncated: boolean } {
   const n = a.length
   const m = b.length
-  const cap = 1500
-  if (n > cap || m > cap) {
+  if (n > LCS_CAP || m > LCS_CAP) {
     const setA = new Set(a)
-    const added = b.filter((l) => !setA.has(l)).length
-    return { lines: [], adds: added, dels: n - (m - added), truncated: true }
+    const ops: RawOp[] = []
+    for (const line of a) if (!setBHas(setA, line)) ops.push({ kind: 'del', text: line })
+    for (const line of b) if (!setA.has(line)) ops.push({ kind: 'add', text: line })
+    return { ops, truncated: true }
   }
   const dp: number[][] = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0))
   for (let i = n - 1; i >= 0; i--) {
@@ -147,44 +165,89 @@ function lcsDiff(a: string[], b: string[]): { lines: SnapshotDiffLine[]; adds: n
       dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1])
     }
   }
-  const lines: SnapshotDiffLine[] = []
-  let adds = 0
-  let dels = 0
+  const ops: RawOp[] = []
   let i = 0
   let j = 0
   while (i < n && j < m) {
     if (a[i] === b[j]) {
-      lines.push({ type: 'ctx', text: a[i] })
+      ops.push({ kind: 'same', text: a[i] })
       i++
       j++
     } else if (dp[i + 1][j] >= dp[i][j + 1]) {
-      lines.push({ type: 'del', text: a[i] })
-      dels++
+      ops.push({ kind: 'del', text: a[i] })
       i++
     } else {
-      lines.push({ type: 'add', text: b[j] })
-      adds++
+      ops.push({ kind: 'add', text: b[j] })
       j++
     }
   }
   while (i < n) {
-    lines.push({ type: 'del', text: a[i] })
-    dels++
+    ops.push({ kind: 'del', text: a[i] })
     i++
   }
   while (j < m) {
-    lines.push({ type: 'add', text: b[j] })
-    adds++
+    ops.push({ kind: 'add', text: b[j] })
     j++
   }
-  const truncated = lines.length > DIFF_MAX_LINES
-  const shown = truncated ? lines.slice(0, DIFF_MAX_LINES) : lines
-  return { lines: shown, adds, dels, truncated }
+  return { ops, truncated: false }
+}
+
+function setBHas(set: Set<string>, line: string): boolean {
+  return set.has(line)
+}
+
+/** pair del/add runs into aligned side-by-side rows */
+function alignRows(ops: RawOp[]): SnapshotDiffRow[] {
+  const rows: SnapshotDiffRow[] = []
+  let leftN = 0
+  let rightN = 0
+  let i = 0
+  while (i < ops.length) {
+    const op = ops[i]
+    if (op.kind === 'same') {
+      leftN++
+      rightN++
+      rows.push({
+        left: { n: leftN, text: op.text },
+        right: { n: rightN, text: op.text },
+      })
+      i++
+      continue
+    }
+    if (op.kind === 'del') {
+      const dels: string[] = []
+      while (i < ops.length && ops[i].kind === 'del') {
+        dels.push(ops[i].text)
+        i++
+      }
+      const adds: string[] = []
+      while (i < ops.length && ops[i].kind === 'add') {
+        adds.push(ops[i].text)
+        i++
+      }
+      const pairs = Math.max(dels.length, adds.length)
+      for (let k = 0; k < pairs; k++) {
+        const leftText = dels[k]
+        const rightText = adds[k]
+        if (leftText !== undefined) leftN++
+        if (rightText !== undefined) rightN++
+        rows.push({
+          left: leftText !== undefined ? { n: leftN, text: leftText } : null,
+          right: rightText !== undefined ? { n: rightN, text: rightText } : null,
+        })
+      }
+      continue
+    }
+    rightN++
+    rows.push({ left: null, right: { n: rightN, text: op.text } })
+    i++
+  }
+  return rows
 }
 
 /**
- * Compare a snapshot against the current copy. Text documents get a git-style
- * line diff; binary formats get a size + hash comparison instead.
+ * Compare a snapshot against the current copy. Text documents get a
+ * side-by-side line diff; binary formats get a size + hash comparison.
  */
 export function diffLibrarySnapshot(
   snapshotsRoot: string,
@@ -228,8 +291,16 @@ export function diffLibrarySnapshot(
     const normalize = (text: string) => text.replace(/\r\n/g, '\n')
     const a = normalize(readFileSync(snapshotPath, 'utf8')).split('\n')
     const b = normalize(readFileSync(entry.libPath, 'utf8')).split('\n')
-    const diff = lcsDiff(a, b)
-    return { kind: 'text', ...diff }
+    const { ops, truncated } = lcsOps(a, b)
+    const rows = alignRows(ops)
+    let adds = 0
+    let dels = 0
+    for (const op of ops) {
+      if (op.kind === 'add') adds++
+      if (op.kind === 'del') dels++
+    }
+    const shown = rows.length > DIFF_MAX_ROWS ? rows.slice(0, DIFF_MAX_ROWS) : rows
+    return { kind: 'text', rows: shown, adds, dels, truncated: truncated || rows.length > DIFF_MAX_ROWS }
   } catch {
     return null
   }

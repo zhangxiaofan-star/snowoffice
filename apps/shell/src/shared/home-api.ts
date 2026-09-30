@@ -104,13 +104,18 @@ export interface LibrarySnapshotInfo {
   sizeBytes: number
 }
 
-export type LibrarySnapshotDiffLine = { type: 'add' | 'del' | 'ctx'; text: string }
+export type LibrarySnapshotCell = { n: number; text: string } | null
+
+export interface LibrarySnapshotDiffRow {
+  left: LibrarySnapshotCell
+  right: LibrarySnapshotCell
+}
 
 export interface LibrarySnapshotDiff {
   kind: 'text' | 'binary'
+  rows?: LibrarySnapshotDiffRow[]
   adds?: number
   dels?: number
-  lines?: LibrarySnapshotDiffLine[]
   truncated?: boolean
   snapshotBytes?: number
   currentBytes?: number

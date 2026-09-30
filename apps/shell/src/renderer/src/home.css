@@ -2294,3 +2294,96 @@ body.vib .home {
   font-size: 12px;
   margin: 4px 0 8px;
 }
+
+/* side-by-side snapshot diff (two-column, git style) */
+.snap-diff-table {
+  margin-top: 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.snap-diff-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--hover);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.snap-diff-header .snap-diff-side {
+  padding: 4px 10px;
+}
+
+.snap-diff-body {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.snap-diff-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  font-family: var(--font-mono, Consolas, Menlo, monospace);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.snap-diff-side {
+  padding: 1px 10px;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.snap-diff-n {
+  color: var(--text-secondary);
+  opacity: 0.6;
+  min-width: 22px;
+  text-align: right;
+  flex: none;
+  user-select: none;
+}
+
+.snap-diff-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.snap-diff-side.snap-diff-del {
+  background: var(--accent-soft);
+}
+
+.snap-diff-side.snap-diff-add {
+  background: var(--accent-soft);
+}
+
+.snap-diff-side.snap-diff-empty {
+  background: var(--surface);
+  opacity: 0.45;
+}
+
+.snap-diff-summary {
+  margin: 8px 0 0;
+  font-size: 12px;
+  display: flex;
+  gap: 10px;
+}
+
+.snap-diff-adds {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.snap-diff-dels {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.snap-diff-trunc {
+  color: var(--text-secondary);
+  margin-left: 8px;
+}
