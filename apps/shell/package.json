@@ -25,6 +25,7 @@
     "@genoffice/ai-search": "*",
     "@genoffice/docs": "*",
     "@genoffice/docx-engine": "*",
+      "@genoffice/file-parse": "*",
     "@genoffice/electron-utils": "*",
     "@genoffice/cli": "*",
     "@genoffice/i18n": "*",

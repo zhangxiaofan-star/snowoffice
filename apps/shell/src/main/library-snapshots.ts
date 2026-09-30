@@ -1,6 +1,7 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { createHash } from 'node:crypto'
+import { parseFileToText } from '@genoffice/file-parse'
 import { pathKey } from './library'
 import type { LibrarySnapshotDiffRow } from '../shared/home-api'
 
@@ -104,6 +105,7 @@ function pruneSnapshots(dir: string): void {
 const TEXT_EXTENSIONS = new Set(['csv', 'tsv', 'md', 'markdown', 'html', 'htm', 'txt', 'json', 'svg', 'xml'])
 const DIFF_MAX_BYTES = 2 * 1024 * 1024
 const DIFF_MAX_ROWS = 400
+const DOC_EXTS = new Set(['docx', 'doc', 'ppt', 'pptx', 'pdf', 'xlsx', 'xlsm'])
 const LCS_CAP = 1500
 
 export type SnapshotDiffCell = {
@@ -125,6 +127,8 @@ export type SnapshotDiffHunk =
 
 export interface SnapshotDiff {
   kind: 'text' | 'binary'
+  /** true when rows are document paragraphs (long text, wrapped) */
+  paragraphs?: boolean
   /** side-by-side aligned rows: old left, current right */
   rows?: SnapshotDiffRow[]
   adds?: number
@@ -202,6 +206,12 @@ function setBHas(set: Set<string>, line: string): boolean {
 }
 
 /** pair del/add runs into aligned side-by-side rows */
+/** oversized documents: del+add everything without LCS alignment */
+function coarseOps(a: string[], b: string[]): RawOp[] {
+  const ops: RawOp[] = a.map((text) => ({ kind: 'del' as const, text }))
+  ops.push(...b.map((text) => ({ kind: 'add' as const, text })))
+  return ops
+}
 function alignRows(ops: RawOp[]): SnapshotDiffRow[] {
   const rows: SnapshotDiffRow[] = []
   let leftN = 0
@@ -254,11 +264,11 @@ function alignRows(ops: RawOp[]): SnapshotDiffRow[] {
  * Compare a snapshot against the current copy. Text documents get a
  * side-by-side line diff; binary formats get a size + hash comparison.
  */
-export function diffLibrarySnapshot(
+export async function diffLibrarySnapshot(
   snapshotsRoot: string,
   entry: { originalPath: string; libPath: string },
   timestamp: number,
-): SnapshotDiff | null {
+): Promise<SnapshotDiff | null> {
   const dir = entryDir(snapshotsRoot, entry.originalPath)
   if (!existsSync(dir)) return null
   let snapshotPath: string | null = null
@@ -281,6 +291,43 @@ export function diffLibrarySnapshot(
   const ext = extensionOf(entry.libPath)
   const currentBytes = statSync(entry.libPath).size
 
+  // Office/PDF documents: paragraph-level content diff via the text extractor
+  if (DOC_EXTS.has(ext)) {
+    try {
+      const snapPath: string = snapshotPath
+      const curPath: string = entry.libPath
+      const snapshotParsed = await parseFileToText(snapPath)
+      const currentParsed = await parseFileToText(curPath)
+      if (snapshotParsed.ok && currentParsed.ok) {
+        const paragraphs = (text: string) =>
+          text.replace(/\r\n/g, '\n').split('\n').map((l) => l.trimEnd()).filter((l, idx, all) => l !== '' || (idx > 0 && all[idx - 1] !== ''))
+        const a = paragraphs(snapshotParsed.text ?? '')
+        const b = paragraphs(currentParsed.text ?? '')
+        const { ops, truncated } =
+          a.length <= LCS_CAP && b.length <= LCS_CAP
+            ? lcsOps(a, b)
+            : { ops: coarseOps(a, b), truncated: true }
+        const rows = alignRows(ops)
+        let adds = 0
+        let dels = 0
+        for (const op of ops) {
+          if (op.kind === 'add') adds++
+          if (op.kind === 'del') dels++
+        }
+        const shown = rows.length > DIFF_MAX_ROWS ? rows.slice(0, DIFF_MAX_ROWS) : rows
+        return {
+          kind: 'text',
+          rows: shown,
+          adds,
+          dels,
+          truncated: truncated || rows.length > DIFF_MAX_ROWS,
+          paragraphs: true,
+        }
+      }
+    } catch {
+      // extractor failed on one side: fall through to the binary compare
+    }
+  }
   if (!TEXT_EXTENSIONS.has(ext) || snapshotBytes > DIFF_MAX_BYTES || currentBytes > DIFF_MAX_BYTES) {
     const snapHash = hashFile(snapshotPath)
     const curHash = hashFile(entry.libPath)
