@@ -538,14 +538,14 @@ async function publishRelease(version, installer, blockmap) {
 
   let ghExe = 'gh'
   const ghLocal = 'C:/Program Files/GitHub CLI/gh.exe'
-  const ghCheck = spawnSync(ghExe, ['--version'], { shell: true, encoding: 'utf8' })
+  const ghCheck = spawnSync(ghExe, ['--version'], { encoding: 'utf8' })
   if (ghCheck.status !== 0 && existsSync(ghLocal)) {
     ghExe = ghLocal
-    if (spawnSync(ghExe, ['--version'], { shell: true, encoding: 'utf8' }).status === 0) {
+    if (spawnSync(ghExe, ['--version'], { encoding: 'utf8' }).status === 0) {
       console.log('[release] using gh from', ghLocal)
     }
   }
-  if (spawnSync(ghExe, ['--version'], { shell: true, encoding: 'utf8' }).status !== 0) {
+  if (spawnSync(ghExe, ['--version'], { encoding: 'utf8' }).status !== 0) {
     console.error('[release] gh CLI not found — install it (winget install GitHub.cli), run gh auth login once, then publish manually:')
     console.error(`  gh release create ${tag} "${installer}" --title "SnowOffice v${version}" --notes-file "${notesFile}"`)
     return
@@ -562,7 +562,7 @@ async function publishRelease(version, installer, blockmap) {
       '--title', `SnowOffice v${version}`,
       '--notes-file', notesFile,
     ],
-    { shell: true, stdio: 'inherit' },
+    { stdio: 'inherit' },
   )
   if (create.status !== 0) {
     console.error(`[release] gh release create failed (exit ${create.status}) — artifacts:`)

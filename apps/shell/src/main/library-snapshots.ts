@@ -2,6 +2,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync,
 import { basename, join } from 'node:path'
 import { createHash } from 'node:crypto'
 import { pathKey } from './library'
+import type { LibrarySnapshotDiffRow } from '../shared/home-api'
 
 /**
  * Version history for library copies: every snapshot is a plain file copied
@@ -117,6 +118,10 @@ export interface SnapshotDiffRow {
   /** current-version cell (null when the line was added) */
   right: SnapshotDiffCell
 }
+
+export type SnapshotDiffHunk =
+  | { kind: 'fold'; count: number }
+  | { kind: 'rows'; count: number; items: Array<{ row: LibrarySnapshotDiffRow; changed: boolean }> }
 
 export interface SnapshotDiff {
   kind: 'text' | 'binary'
