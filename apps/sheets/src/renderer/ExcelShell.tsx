@@ -612,7 +612,7 @@ export function ExcelShell({
 
   return (
     <main
-      className={`app-shell ${isCopilotOpen ? '' : 'copilot-collapsed'}`}
+      className={`app-shell ${AI_ENABLED && !isCopilotOpen ? 'copilot-collapsed' : ''}`}
       inert={openingWorkbook}
       aria-busy={openingWorkbook}
     >
@@ -729,7 +729,7 @@ export function ExcelShell({
       </header>
 
       {/* AI panel docks on the left, full height under the ribbon (unified with docs) */}
-      <div className="sheet-body">
+      <div className={`sheet-body${AI_ENABLED ? '' : ' no-copilot'}`}>
         {AI_ENABLED && (
           <AiChatPanel
             isOpen={isCopilotOpen}

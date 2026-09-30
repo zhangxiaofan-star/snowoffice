@@ -6013,3 +6013,8 @@ body > div:has([data-u-comp='find-replace-dialog']) {
 .frpro-more {
   color: var(--text-secondary);
 }
+
+/* AI feature set disabled: the sheet owns the full width (no copilot column) */
+.app-shell .sheet-body.no-copilot {
+  grid-template-columns: minmax(0, 1fr);
+}
