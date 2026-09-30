@@ -111,12 +111,30 @@ export interface LibrarySnapshotSeg {
   text: string
 }
 
+/** one formatted run of a docx diff row, rendered with its real styling */
+export interface LibrarySnapshotRun {
+  text: string
+  bold?: boolean
+  italic?: boolean
+  underline?: boolean
+  strike?: boolean
+  /** hex without '#' */
+  color?: string
+  sizeHalfPoints?: number
+  font?: string
+  /** OOXML named highlight, e.g. 'yellow' */
+  highlight?: string
+}
+
 export interface LibrarySnapshotDiffRow {
   left: LibrarySnapshotCell
   right: LibrarySnapshotCell
   /** inline word-level segments when both sides exist and differ */
   leftSegs?: LibrarySnapshotSeg[]
   rightSegs?: LibrarySnapshotSeg[]
+  /** styled runs of a docx row: render these instead of the raw cell text */
+  leftRuns?: LibrarySnapshotRun[]
+  rightRuns?: LibrarySnapshotRun[]
 }
 
 export interface LibrarySnapshotDiff {

@@ -121,6 +121,28 @@ export interface SnapshotSeg {
   text: string
 }
 
+/** serializable formatting of one docx run, for styled rendering in the diff */
+export interface SnapshotRun {
+  text: string
+  bold?: boolean
+  italic?: boolean
+  underline?: boolean
+  strike?: boolean
+  /** hex without '#' */
+  color?: string
+  sizeHalfPoints?: number
+  font?: string
+  highlight?: string
+}
+
+/** one diffable paragraph: `key` carries style markers so style-only changes
+ * diff, `display` is the plain text, `runs` carries the real formatting */
+export interface SnapshotPara {
+  key: string
+  display: string
+  runs?: SnapshotRun[]
+}
+
 export interface SnapshotDiffRow {
   /** old-version cell (null when the line is new) */
   left: SnapshotDiffCell
@@ -129,6 +151,9 @@ export interface SnapshotDiffRow {
   /** inline word-level segments when both sides exist and differ */
   leftSegs?: SnapshotSeg[]
   rightSegs?: SnapshotSeg[]
+  /** styled runs of a docx row: the renderer shows these instead of cell text */
+  leftRuns?: SnapshotRun[]
+  rightRuns?: SnapshotRun[]
 }
 
 export type SnapshotDiffHunk =
@@ -215,14 +240,83 @@ function setBHas(set: Set<string>, line: string): boolean {
   return set.has(line)
 }
 
-/** pair del/add runs into aligned side-by-side rows */
-/** oversized documents: del+add everything without LCS alignment */
-function coarseOps(a: string[], b: string[]): RawOp[] {
-  const ops: RawOp[] = a.map((text) => ({ kind: 'del' as const, text }))
-  ops.push(...b.map((text) => ({ kind: 'add' as const, text })))
-  return ops
+/** pair del/add runs into aligned side-by-side rows, carrying each side's runs */
+function alignRows(
+  ops: RawOp[],
+  aParas: readonly SnapshotPara[],
+  bParas: readonly SnapshotPara[],
+): SnapshotDiffRow[] {
+  const rows: SnapshotDiffRow[] = []
+  let leftN = 0
+  let rightN = 0
+  let ai = 0
+  let bi = 0
+  let i = 0
+  while (i < ops.length) {
+    const op = ops[i]
+    if (op.kind === 'same') {
+      leftN++
+      rightN++
+      rows.push({
+        left: { n: leftN, text: op.text },
+        right: { n: rightN, text: op.text },
+        leftRuns: aParas[ai]?.runs,
+        rightRuns: bParas[bi]?.runs,
+      })
+      ai++
+      bi++
+      i++
+      continue
+    }
+    if (op.kind === 'del') {
+      const delIdx: number[] = []
+      while (i < ops.length && ops[i].kind === 'del') {
+        delIdx.push(ai++)
+        i++
+      }
+      const addIdx: number[] = []
+      while (i < ops.length && ops[i].kind === 'add') {
+        addIdx.push(bi++)
+        i++
+      }
+      const pairs = Math.max(delIdx.length, addIdx.length)
+      for (let k = 0; k < pairs; k++) {
+        const leftPara = delIdx[k] !== undefined ? aParas[delIdx[k]] : undefined
+        const rightPara = addIdx[k] !== undefined ? bParas[addIdx[k]] : undefined
+        const leftText = leftPara?.display
+        const rightText = rightPara?.display
+        if (leftText !== undefined) leftN++
+        if (rightText !== undefined) rightN++
+        const inline =
+          leftText !== undefined &&
+          rightText !== undefined &&
+          leftText !== rightText &&
+          leftText.length <= INLINE_CAP &&
+          rightText.length <= INLINE_CAP
+            ? inlineSegs(leftText, rightText)
+            : undefined
+        rows.push({
+          left: leftPara !== undefined ? { n: leftN, text: leftPara.key } : null,
+          right: rightPara !== undefined ? { n: rightN, text: rightPara.key } : null,
+          leftSegs: inline?.leftSegs,
+          rightSegs: inline?.rightSegs,
+          leftRuns: leftPara?.runs,
+          rightRuns: rightPara?.runs,
+        })
+      }
+      continue
+    }
+    rightN++
+    rows.push({
+      left: null,
+      right: { n: rightN, text: op.text },
+      rightRuns: bParas[bi]?.runs,
+    })
+    bi++
+    i++
+  }
+  return rows
 }
-const INLINE_CAP = 1200
 
 /** tokenize: latin/digit runs stay whole, CJK and punctuation split per char */
 function tokenize(text: string): string[] {
@@ -280,85 +374,39 @@ function inlineSegs(
   return { leftSegs, rightSegs }
 }
 
-function alignRows(ops: RawOp[]): SnapshotDiffRow[] {
-  const rows: SnapshotDiffRow[] = []
-  let leftN = 0
-  let rightN = 0
-  let i = 0
-  while (i < ops.length) {
-    const op = ops[i]
-    if (op.kind === 'same') {
-      leftN++
-      rightN++
-      rows.push({
-        left: { n: leftN, text: op.text },
-        right: { n: rightN, text: op.text },
-      })
-      i++
-      continue
-    }
-    if (op.kind === 'del') {
-      const dels: string[] = []
-      while (i < ops.length && ops[i].kind === 'del') {
-        dels.push(ops[i].text)
-        i++
-      }
-      const adds: string[] = []
-      while (i < ops.length && ops[i].kind === 'add') {
-        adds.push(ops[i].text)
-        i++
-      }
-      const pairs = Math.max(dels.length, adds.length)
-      for (let k = 0; k < pairs; k++) {
-        const leftText = dels[k]
-        const rightText = adds[k]
-        if (leftText !== undefined) leftN++
-        if (rightText !== undefined) rightN++
-        const inline =
-          leftText !== undefined &&
-          rightText !== undefined &&
-          leftText !== rightText &&
-          leftText.length <= INLINE_CAP &&
-          rightText.length <= INLINE_CAP
-            ? inlineSegs(leftText, rightText)
-            : undefined
-        rows.push({
-          left: leftText !== undefined ? { n: leftN, text: leftText } : null,
-          right: rightText !== undefined ? { n: rightN, text: rightText } : null,
-          leftSegs: inline?.leftSegs,
-          rightSegs: inline?.rightSegs,
-        })
-      }
-      continue
-    }
-    rightN++
-    rows.push({ left: null, right: { n: rightN, text: op.text } })
-    i++
-  }
-  return rows
+/** oversized documents: del+add everything without LCS alignment */
+function coarseOps(a: string[], b: string[]): RawOp[] {
+  const ops: RawOp[] = a.map((text) => ({ kind: 'del' as const, text }))
+  ops.push(...b.map((text) => ({ kind: 'add' as const, text })))
+  return ops
 }
+const INLINE_CAP = 1200
 
 /**
  * Compare a snapshot against the current copy. Text documents get a
  * side-by-side line diff; binary formats get a size + hash comparison.
  */
 /**
- * Style-annotated text of a docx: every run carries a <...> marker listing its
- * non-default formatting (b=bold, i=italic, u=underline, s=strike, cRRGGBB=color,
- * zNN=size in half-points, hNAME=highlight). Style-only changes therefore show
- * up in the paragraph diff, not just wording changes.
+ * Styled paragraphs of a docx. The diff key carries a <...> marker per run
+ * listing its non-default formatting (b=bold, i=italic, u=underline, s=strike,
+ * cRRGGBB=color, zNN=size in half-points, hNAME=highlight, fFONT=font) so
+ * style-only changes diff too, while `runs` keeps the real formatting for the
+ * renderer and `display` the plain text the inline segments align with.
  */
-async function styledDocxText(bytes: Uint8Array): Promise<string> {
+async function styledDocxParas(bytes: Uint8Array): Promise<SnapshotPara[]> {
   const parsed = await parseDocx(bytes)
-  const lines: string[] = []
+  const paras: SnapshotPara[] = []
   for (const block of parsed.blocks) {
     if (block.hidden) continue
     const runs: Run[] | undefined = block.runs
     if (!runs || runs.length === 0) {
-      lines.push(block.previewText ?? block.label ?? `[${block.type}]`)
+      const text = block.previewText ?? block.label ?? `[${block.type}]`
+      paras.push({ key: text, display: text })
       continue
     }
-    let line = ''
+    let key = ''
+    let display = ''
+    const out: SnapshotRun[] = []
     for (const run of runs) {
       const sig: string[] = []
       if (run.bold) sig.push('b')
@@ -368,11 +416,30 @@ async function styledDocxText(bytes: Uint8Array): Promise<string> {
       if (run.color && run.color !== 'auto') sig.push(`c${run.color}`)
       if (run.sizeHalfPoints) sig.push(`z${run.sizeHalfPoints}`)
       if (run.highlight) sig.push(`h${run.highlight}`)
-      line += sig.length > 0 ? `<${sig.join(',')}>${run.text}` : run.text
+      if (run.font) sig.push(`f${run.font}`)
+      key += sig.length > 0 ? `<${sig.join(',')}>${run.text}` : run.text
+      display += run.text
+      out.push({
+        text: run.text,
+        bold: run.bold,
+        italic: run.italic,
+        underline: run.underline,
+        strike: run.strike,
+        color: run.color && run.color !== 'auto' ? run.color : undefined,
+        sizeHalfPoints: run.sizeHalfPoints,
+        font: run.font,
+        highlight: run.highlight,
+      })
     }
-    lines.push(line)
+    paras.push({ key, display, runs: out })
   }
-  return lines.join('\n')
+  return paras
+}
+
+/** trim trailing whitespace like the old line-based pipeline did, keeping blanks collapsed */
+function trimParas(list: SnapshotPara[]): SnapshotPara[] {
+  const trimmed = list.map((p) => ({ ...p, key: p.key.trimEnd(), display: p.display.trimEnd() }))
+  return trimmed.filter((p, idx) => p.display !== '' || (idx > 0 && trimmed[idx - 1].display !== ''))
 }
 export async function diffLibrarySnapshot(
   snapshotsRoot: string,
@@ -407,47 +474,53 @@ export async function diffLibrarySnapshot(
     try {
       const snapPath: string = snapshotPath
       const curPath: string = entry.libPath
-      let snapshotText: string | null = null
-      let currentText: string | null = null
+      let aParas: SnapshotPara[] | null = null
+      let bParas: SnapshotPara[] | null = null
       if (ext === 'docx') {
         try {
-          snapshotText = await styledDocxText(await readFile(snapPath))
-          currentText = await styledDocxText(await readFile(curPath))
+          aParas = trimParas(await styledDocxParas(await readFile(snapPath)))
+          bParas = trimParas(await styledDocxParas(await readFile(curPath)))
         } catch {
           // malformed docx: fall through to the plain extractor
         }
       }
-      if (snapshotText === null || currentText === null) {
-        const snapshotParsed = await parseFileToText(snapPath)
-        const currentParsed = await parseFileToText(curPath)
-        snapshotText = snapshotParsed.ok ? (snapshotParsed.text ?? '') : null
-        currentText = currentParsed.ok ? (currentParsed.text ?? '') : null
+      if (aParas === null || bParas === null) {
+        const [snapshotParsed, currentParsed] = await Promise.all([
+          parseFileToText(snapPath),
+          parseFileToText(curPath),
+        ])
+        if (!snapshotParsed.ok || !currentParsed.ok) throw new Error('extract failed')
+        const toParas = (text: string) =>
+          trimParas(
+            text
+              .replace(/\r\n/g, '\n')
+              .split('\n')
+              .map((line) => ({ key: line, display: line })),
+          )
+        aParas = toParas(snapshotParsed.text ?? '')
+        bParas = toParas(currentParsed.text ?? '')
       }
-      if (snapshotText !== null && currentText !== null) {
-        const paragraphs = (text: string) =>
-          text.replace(/\r\n/g, '\n').split('\n').map((l) => l.trimEnd()).filter((l, idx, all) => l !== '' || (idx > 0 && all[idx - 1] !== ''))
-        const a = paragraphs(snapshotText)
-        const b = paragraphs(currentText)
-        const { ops, truncated } =
-          a.length <= LCS_CAP && b.length <= LCS_CAP
-            ? lcsOps(a, b)
-            : { ops: coarseOps(a, b), truncated: true }
-        const rows = alignRows(ops)
-        let adds = 0
-        let dels = 0
-        for (const op of ops) {
-          if (op.kind === 'add') adds++
-          if (op.kind === 'del') dels++
-        }
-        const shown = rows.length > DIFF_MAX_ROWS ? rows.slice(0, DIFF_MAX_ROWS) : rows
-        return {
-          kind: 'text',
-          rows: shown,
-          adds,
-          dels,
-          truncated: truncated || rows.length > DIFF_MAX_ROWS,
-          paragraphs: true,
-        }
+      const aKeys = aParas.map((p) => p.key)
+      const bKeys = bParas.map((p) => p.key)
+      const { ops, truncated } =
+        aKeys.length <= LCS_CAP && bKeys.length <= LCS_CAP
+          ? lcsOps(aKeys, bKeys)
+          : { ops: coarseOps(aKeys, bKeys), truncated: true }
+      const rows = alignRows(ops, aParas, bParas)
+      let adds = 0
+      let dels = 0
+      for (const op of ops) {
+        if (op.kind === 'add') adds++
+        if (op.kind === 'del') dels++
+      }
+      const shown = rows.length > DIFF_MAX_ROWS ? rows.slice(0, DIFF_MAX_ROWS) : rows
+      return {
+        kind: 'text',
+        rows: shown,
+        adds,
+        dels,
+        truncated: truncated || rows.length > DIFF_MAX_ROWS,
+        paragraphs: true,
       }
     } catch {
       // extractor failed on one side: fall through to the binary compare
@@ -466,10 +539,15 @@ export async function diffLibrarySnapshot(
 
   try {
     const normalize = (text: string) => text.replace(/\r\n/g, '\n')
-    const a = normalize(readFileSync(snapshotPath, 'utf8')).split('\n')
-    const b = normalize(readFileSync(entry.libPath, 'utf8')).split('\n')
-    const { ops, truncated } = lcsOps(a, b)
-    const rows = alignRows(ops)
+    const toParas = (text: string) =>
+      text.split('\n').map((line) => ({ key: line, display: line }))
+    const aParas = toParas(normalize(readFileSync(snapshotPath, 'utf8')))
+    const bParas = toParas(normalize(readFileSync(entry.libPath, 'utf8')))
+    const { ops, truncated } = lcsOps(
+      aParas.map((p) => p.key),
+      bParas.map((p) => p.key),
+    )
+    const rows = alignRows(ops, aParas, bParas)
     let adds = 0
     let dels = 0
     for (const op of ops) {

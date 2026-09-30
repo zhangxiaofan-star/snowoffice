@@ -7,6 +7,7 @@ import type {
   LibrarySnapshotDiff,
   LibrarySnapshotInfo,
   LibrarySnapshotDiffRow,
+  LibrarySnapshotRun,
   LibrarySnapshotSeg,
 } from '../../shared/home-api'
 
@@ -14,6 +15,112 @@ export type SnapshotDiffView =
   | { state: 'loading' }
   | { state: 'error' }
   | { state: 'ready'; diff: LibrarySnapshotDiff }
+
+/** OOXML w:highlight names → css colors */
+const HIGHLIGHT_HEX: Record<string, string> = {
+  yellow: '#ffff00',
+  green: '#00ff00',
+  cyan: '#00ffff',
+  magenta: '#ff00ff',
+  blue: '#0000ff',
+  red: '#ff0000',
+  darkblue: '#00008b',
+  darkcyan: '#008b8b',
+  darkgreen: '#006400',
+  darkmagenta: '#8b008b',
+  darkred: '#8b0000',
+  darkyellow: '#808000',
+  darkgray: '#a9a9a9',
+  darkgrey: '#a9a9a9',
+  lightgray: '#d3d3d3',
+  lightgrey: '#d3d3d3',
+  black: '#000000',
+  white: '#ffffff',
+}
+
+function runStyle(run: LibrarySnapshotRun): React.CSSProperties {
+  const style: React.CSSProperties = {}
+  if (run.bold) style.fontWeight = 700
+  if (run.italic) style.fontStyle = 'italic'
+  const deco = [run.underline ? 'underline' : '', run.strike ? 'line-through' : '']
+    .filter(Boolean)
+    .join(' ')
+  if (deco) style.textDecoration = deco
+  if (run.color) style.color = `#${run.color}`
+  if (run.sizeHalfPoints) style.fontSize = `${run.sizeHalfPoints / 2}pt`
+  if (run.font) style.fontFamily = `"${run.font}", "Microsoft YaHei", sans-serif`
+  if (run.highlight) {
+    style.backgroundColor = HIGHLIGHT_HEX[run.highlight.toLowerCase()] ?? `#${run.highlight}`
+  }
+  return style
+}
+
+/**
+ * One diff column: docx rows carry styled runs — render each run with its real
+ * formatting (color/font/size/…), split at the inline word-segment boundaries
+ * so deletions/additions stay highlighted inside the styled text. Plain rows
+ * keep the previous segment-or-text rendering.
+ */
+function DiffSide({
+  cell,
+  runs,
+  segs,
+  segClass,
+}: {
+  readonly cell: LibrarySnapshotCell
+  readonly runs?: LibrarySnapshotRun[]
+  readonly segs?: LibrarySnapshotSeg[]
+  readonly segClass?: 'snap-seg-del' | 'snap-seg-add'
+}): React.JSX.Element {
+  let content: React.ReactNode = cell?.text
+  if (runs && runs.length > 0) {
+    const pieces: Array<{ text: string; run: LibrarySnapshotRun; seg?: string }> = []
+    if (segs && segs.length > 0) {
+      let ri = 0
+      let off = 0
+      for (const seg of segs) {
+        let need = seg.text.length
+        while (need > 0) {
+          const run = runs[ri]
+          if (!run) break
+          const take = Math.min(run.text.length - off, need)
+          if (take > 0) {
+            pieces.push({
+              text: run.text.slice(off, off + take),
+              run,
+              seg: seg.t !== 'same' ? segClass : undefined,
+            })
+            off += take
+            need -= take
+          }
+          if (off >= run.text.length) {
+            ri++
+            off = 0
+          }
+        }
+      }
+      while (ri < runs.length) {
+        pieces.push({ text: runs[ri].text.slice(off), run: runs[ri] })
+        ri++
+        off = 0
+      }
+    } else {
+      for (const run of runs) pieces.push({ text: run.text, run })
+    }
+    content = pieces.map((piece, pi) => (
+      <span key={pi} className={piece.seg} style={runStyle(piece.run)}>
+        {piece.text}
+      </span>
+    ))
+  } else if (segs && segs.length > 0) {
+    content = segs.map((seg, si) => (
+      <span key={si} className={seg.t !== 'same' ? segClass : undefined}>
+        {seg.text}
+      </span>
+    ))
+  }
+  return <span className="snap-diff-text">{content}</span>
+}
 
 function formatModified(mtimeMs: number, i18n: I18n): string {
   const date = new Date(mtimeMs)
@@ -154,33 +261,21 @@ export function LibrarySnapshotsModal({
                         <div key={i} className={`snap-diff-grid${changed ? ' snap-diff-changed' : ''}`}>
                           <div className={`snap-diff-side${leftClass}`}>
                             <span className="snap-diff-n">{row.left?.n ?? ''}</span>
-                            <span className="snap-diff-text">
-                              {row.leftSegs
-                                ? row.leftSegs.map((seg, si) => (
-                                    <span
-                                      key={si}
-                                      className={seg.t === 'del' ? 'snap-seg-del' : undefined}
-                                    >
-                                      {seg.text}
-                                    </span>
-                                  ))
-                                : row.left?.text}
-                            </span>
+                            <DiffSide
+                              cell={row.left}
+                              runs={row.leftRuns}
+                              segs={row.leftSegs}
+                              segClass="snap-seg-del"
+                            />
                           </div>
                           <div className={`snap-diff-side${rightClass}`}>
                             <span className="snap-diff-n">{row.right?.n ?? ''}</span>
-                            <span className="snap-diff-text">
-                              {row.rightSegs
-                                ? row.rightSegs.map((seg, si) => (
-                                    <span
-                                      key={si}
-                                      className={seg.t === 'add' ? 'snap-seg-add' : undefined}
-                                    >
-                                      {seg.text}
-                                    </span>
-                                  ))
-                                : row.right?.text}
-                            </span>
+                            <DiffSide
+                              cell={row.right}
+                              runs={row.rightRuns}
+                              segs={row.rightSegs}
+                              segClass="snap-seg-add"
+                            />
                           </div>
                         </div>
                       )
