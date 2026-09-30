@@ -9,6 +9,7 @@
  *   node scripts/package-win.mjs --skip-build      reuse the existing apps/ * /out and cli dist
  *   node scripts/package-win.mjs --sidecar         force a sidecar rebuild even if one is staged
  *   node scripts/package-win.mjs --skip-smoke      don't launch the packed app at the end
+ *   node scripts/package-win.mjs --publish-only    publish the already-built installer (no rebuild)
  *
  * The version lives in apps/shell/package.json ("version"); it names the
  * installer (SnowOffice Setup <version>.exe), the installed app, and is baked
@@ -99,6 +100,7 @@ const skipBuild = flags.has('--skip-build')
 const forceSidecar = flags.has('--sidecar')
 const skipSmoke = flags.has('--skip-smoke')
 const release = flags.has('--release')
+const publishOnly = flags.has('--publish-only')
 
 // ---- 0. run log ---------------------------------------------------------------
 
@@ -433,6 +435,27 @@ async function main() {
   process.env.ELECTRON_BUILDER_BINARIES_MIRROR ??=
     'https://npmmirror.com/mirrors/electron-builder-binaries/'
 
+  // --publish-only: skip everything and just publish the already-built
+  // installer that is sitting in the release directory
+  if (publishOnly) {
+    const shellPkgPub = JSON.parse(readFileSync(join(SHELL, 'package.json'), 'utf8'))
+    const pubInstaller = join(
+      RELEASE,
+      `SnowOffice Setup ${shellPkgPub.version}.exe`,
+    )
+    if (!nonEmpty(pubInstaller)) {
+      console.error(`installer not found: ${pubInstaller}`)
+      process.exit(1)
+    }
+    await publishRelease(
+      shellPkgPub.version,
+      pubInstaller,
+      join(RELEASE, `SnowOffice Setup ${shellPkgPub.version}.exe.blockmap`),
+    )
+    console.log(`\n=== DONE ===\nPublished: ${pubInstaller}`)
+    return
+  }
+
   const version = applyVersionRequest()
   const cargoAvailable = ensureToolchainPaths()
   await ensureSidecar(cargoAvailable)
@@ -519,11 +542,12 @@ async function askReleaseNotes() {
 async function publishRelease(version, installer, blockmap) {
   const tag = `v${version}`
   const notesFile = join(RELEASE, `RELEASE-NOTES-${version}.md`)
-  const notes = await askReleaseNotes()
-  const body = notes.trim() || `${version} release`
-  writeFileSync(notesFile, body)
-
-  console.log(`[release] tag ${tag}`)
+  // reuse the notes you already filled in for this version; prompt only when missing
+  if (!existsSync(notesFile)) {
+    const notes = await askReleaseNotes()
+    writeFileSync(notesFile, notes.trim() || `${version} release`)
+  }
+  console.log(`[release] notes: ${notesFile}`)
   const hasTag =
     spawnSync('git', ['rev-parse', '-q', '--verify', `refs/tags/${tag}`], { cwd: ROOT }).status === 0
   if (!hasTag) {
@@ -550,7 +574,6 @@ async function publishRelease(version, installer, blockmap) {
     console.error(`  gh release create ${tag} "${installer}" --title "SnowOffice v${version}" --notes-file "${notesFile}"`)
     return
   }
-  console.log(`[release] creating GitHub release ${tag} ...`)
   console.log(`[release] creating GitHub release ${tag} ...`)
   const create = spawnSync(
     ghExe,
